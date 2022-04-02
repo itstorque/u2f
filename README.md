@@ -7,6 +7,7 @@ u2f dongle implementation for MIT's 6.858 - Spring 2022
 - `arduino/`: arduino code that is uploaded to the actual dongle
 - `server/`: test server in python
 - `chrome/`: js that established a connection between the dongle and chrome via usb protocol
+- `google-u2f-ref-code`: git submodule of google's u2f reference code
 
 ## References
 
