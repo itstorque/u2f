@@ -1,3 +1,3 @@
-[submodule "google-u2f-ref-code"]
+[submodule "u2f-ref-code"]
 	path = google-u2f-ref-code
-	url = git@github.com:fido-alliance/google-u2f-ref-code.git
+	url = https://github.com/google/u2f-ref-code
