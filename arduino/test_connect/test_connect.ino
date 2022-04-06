@@ -36,15 +36,12 @@ void loop() {
 
     command[command_index] = b;
 
-    Serial.write("\nLOAD: ");
-    Serial.write(command[command_index]);
-
     if (b==0) {
       // process_command
 
       Serial.write("\nCOMMAND: ");
       
-      for (int i=0; i++; i<=command_index) {
+      for (int i=0; i<=command_index; i++) {
         Serial.write(command[i]);
 //        command[i] = 0;
       }
