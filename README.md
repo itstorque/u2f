@@ -2,14 +2,6 @@
 
 u2f dongle implementation for MIT's 6.858 - Spring 2022
 
-## Getting Started
-To set up the submodule, run:
-```
-git submodule init
-git submodule update --init --recursive
-```
-
-
 ## Project Structure
 
 - `arduino/`: arduino code that is uploaded to the actual dongle
@@ -20,6 +12,17 @@ git submodule update --init --recursive
   - send ->
 - `chrome/`: js that established a connection between the dongle and chrome via usb protocol
 - `google-u2f-ref-code`: git submodule of google's u2f reference code
+
+## Implementation
+
+![doc/security_key_flow_diagram.png](doc/security_key_flow_diagram.png)
+
+## Getting Started
+To set up the submodule, run:
+```
+git submodule init
+git submodule update --init --recursive
+```
 
 ## arduino notes
 
