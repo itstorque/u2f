@@ -11,8 +11,13 @@
 WebUSB WebUSBSerial(1 /* https:// */, "webusb.github.io/arduino/demos/console");
 
 #define Serial WebUSBSerial
+#define COMMAND_LENGTH 10
 
 const int ledPin = 13;
+
+int command[COMMAND_LENGTH];
+
+int command_index = 0;
 
 void setup() {
   while (!Serial) {
@@ -25,17 +30,33 @@ void setup() {
 }
 
 void loop() {
+  
   if (Serial && Serial.available()) {
-    int byte = Serial.read();
-    Serial.write(byte);
-    if (byte == 'H') {
-      Serial.write("\r\nTurning LED on.");
-      digitalWrite(ledPin, HIGH);
-    } else if (byte == 'L') {
-      Serial.write("\r\nTurning LED off.");
-      digitalWrite(ledPin, LOW);
+    int b = Serial.read();
+
+    command[command_index] = b;
+
+    Serial.write("\nLOAD: ");
+    Serial.write(command[command_index]);
+
+    if (b==0) {
+      // process_command
+
+      Serial.write("\nCOMMAND: ");
+      
+      for (int i=0; i++; i<=command_index) {
+        Serial.write(command[i]);
+//        command[i] = 0;
+      }
+
+      Serial.flush();
+      
+      command_index = 0;
+      
     }
-    Serial.write("\r\n> ");
-    Serial.flush();
+
+    command_index++;
+    
   }
+  
 }

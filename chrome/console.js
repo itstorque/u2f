@@ -21,8 +21,8 @@
 
     document.getElementById("sendfield").addEventListener("keydown", function (e) {
         if (e.code === "Enter") {  //checks whether the pressed key is "Enter"
-            console.log("sending: " +e.target.value )
-            send(e.target.value);
+            console.log("sending: " + e.target.value )
+            send(e.target.value + "\0");
         }
     });
 
