@@ -10,4 +10,5 @@
 
   - torque:
     - 99th percentile = receive and send function calls+data between client js and arduino
-    - 50th percentile = Webauthn, crypto library random numbers
+    - 50th percentile = Webauthn, crypto library random numbers.
+    - 50th percentile II = make this work with some other microcontroller.
