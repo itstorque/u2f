@@ -5,7 +5,11 @@ u2f dongle implementation for MIT's 6.858 - Spring 2022
 ## Project Structure
 
 - `arduino/`: arduino code that is uploaded to the actual dongle
+  - receive -> origin, hash(challenge, challenge_id)
+  - send -> certificate et al.
 - `server/`: test server in python
+  - receive ->
+  - send ->
 - `chrome/`: js that established a connection between the dongle and chrome via usb protocol
 - `google-u2f-ref-code`: git submodule of google's u2f reference code
 

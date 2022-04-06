@@ -43,16 +43,18 @@ void loop() {
       
       for (int i=0; i<=command_index; i++) {
         Serial.write(command[i]);
-//        command[i] = 0;
+        command[i] = 0;
       }
 
       Serial.flush();
       
       command_index = 0;
       
-    }
+    } else {
 
-    command_index++;
+      command_index++;
+      
+    }
     
   }
   
