@@ -36,6 +36,18 @@ Our other options are:
 - Install TinyUSB from a package manager.
 - MIDIUSB or some other MIDI interface that feeds into chrome.
 
+`about://device-log`: see all USB device related events
+
+`about://usb-internals`: simulate connection and disconnection of virtual WebUSB devices
+
+Test pages:
+- https://webauthn.bin.coffee/  
+- https://demo.yubico.com/webauthn-technical/registration
+- https://akisec.com/demo/
+- https://webauthn.io/
+
+might need to use `mEcc` package (https://github.com/kmackay/micro-ecc) for `ECDH` and `ECDSA`.
+
 ## References
 
 [1] J. Lang, A. Czeskis, D. Balfanz, M. Schilder, and S. Srinivas, “Security Keys: Practical Cryptographic Second Factors for the Modern Web,” in Financial Cryptography and Data Security, vol. 9603, J. Grossklags and B. Preneel, Eds. Berlin, Heidelberg: Springer Berlin Heidelberg, 2017, pp. 422–440. doi: 10.1007/978-3-662-54970-4_25. Available: https://css.csail.mit.edu/6.858/2022/readings/u2f-fc.pdf
