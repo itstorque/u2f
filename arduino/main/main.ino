@@ -2,8 +2,8 @@
 #include <EEPROM.h>
 
 // encryption libs
-#include "sha256.h"
-#include "uECC.h"
+#include "src/sha256/sha256.h"
+#include "src/uECC/uECC.h"
 
 // debug state
 #undef DEBUG
