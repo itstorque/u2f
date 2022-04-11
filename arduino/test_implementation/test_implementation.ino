@@ -324,7 +324,8 @@ int RNG(uint8_t *dest, unsigned size) {
 	return 1;
 
 }
-#pragma mark - SHA-256 Setup
+
+// SHA-256 Setup
 
 #define SHA256_BLOCK_LENGTH  64
 #define SHA256_DIGEST_LENGTH 32
@@ -351,12 +352,203 @@ void finish_SHA256(uECC_HashContext *base, uint8_t *hash_result) {
     sha256_final(&context->ctx, hash_result);
 }
 
+const struct uECC_Curve_t * curve = uECC_secp256r1(); //P-256
+
+uint8_t private_k[36]; //32
+uint8_t public_k[68]; //64
+
+byte handle[64];
+byte sha256_hash[32];
+
 void setup() {
 
 	Serial.begin(9600);
 	uECC_set_rng(&RNG);
 
 	Serial.println("U2F");
+
+}
+
+#pragma mark - U2F PROTOCOL
+
+const char attestation_key[] = "\xf3\xfc\xcc\x0d\x00\xd8\x03\x19\x54\xf9"
+															 "\x08\x64\xd4\x3c\x24\x7f\x4b\xf5\xf0\x66\x5c\x6b\x50\xcc"
+															 "\x17\x74\x9a\x27\xd1\xcf\x76\x64";
+
+const char attestation_DER_cert[] = "\x30\x82\x01\x3c\x30\x81\xe4\xa0\x03\x02"
+	"\x01\x02\x02\x0a\x47\x90\x12\x80\x00\x11\x55\x95\x73\x52"
+	"\x30\x0a\x06\x08\x2a\x86\x48\xce\x3d\x04\x03\x02\x30\x17"
+	"\x31\x15\x30\x13\x06\x03\x55\x04\x03\x13\x0c\x47\x6e\x75"
+	"\x62\x62\x79\x20\x50\x69\x6c\x6f\x74\x30\x1e\x17\x0d\x31"
+	"\x32\x30\x38\x31\x34\x31\x38\x32\x39\x33\x32\x5a\x17\x0d"
+	"\x31\x33\x30\x38\x31\x34\x31\x38\x32\x39\x33\x32\x5a\x30"
+	"\x31\x31\x2f\x30\x2d\x06\x03\x55\x04\x03\x13\x26\x50\x69"
+	"\x6c\x6f\x74\x47\x6e\x75\x62\x62\x79\x2d\x30\x2e\x34\x2e"
+	"\x31\x2d\x34\x37\x39\x30\x31\x32\x38\x30\x30\x30\x31\x31"
+	"\x35\x35\x39\x35\x37\x33\x35\x32\x30\x59\x30\x13\x06\x07"
+	"\x2a\x86\x48\xce\x3d\x02\x01\x06\x08\x2a\x86\x48\xce\x3d"
+	"\x03\x01\x07\x03\x42\x00\x04\x8d\x61\x7e\x65\xc9\x50\x8e"
+	"\x64\xbc\xc5\x67\x3a\xc8\x2a\x67\x99\xda\x3c\x14\x46\x68"
+	"\x2c\x25\x8c\x46\x3f\xff\xdf\x58\xdf\xd2\xfa\x3e\x6c\x37"
+	"\x8b\x53\xd7\x95\xc4\xa4\xdf\xfb\x41\x99\xed\xd7\x86\x2f"
+	"\x23\xab\xaf\x02\x03\xb4\xb8\x91\x1b\xa0\x56\x99\x94\xe1"
+	"\x01\x30\x0a\x06\x08\x2a\x86\x48\xce\x3d\x04\x03\x02\x03"
+	"\x47\x00\x30\x44\x02\x20\x60\xcd\xb6\x06\x1e\x9c\x22\x26"
+	"\x2d\x1a\xac\x1d\x96\xd8\xc7\x08\x29\xb2\x36\x65\x31\xdd"
+	"\xa2\x68\x83\x2c\xb8\x36\xbc\xd3\x0d\xfa\x02\x20\x63\x1b"
+	"\x14\x59\xf0\x9e\x63\x30\x05\x57\x22\xc8\xd8\x9b\x7f\x48"
+	"\x88\x3b\x90\x89\xb8\x8d\x60\xd1\xd9\x79\x59\x02\xb3\x04"
+	"\x10\xdf";
+
+const char handlekey[] = "owo_uWu_OwO_uwu_UwU";
+
+void protocol_register(byte *buffer, byte *message, int reqlength) {
+	// test implementation of u2f register for debugging
+
+	if (reqlength!=64) {
+		respondErrorPDU(buffer, SW_WRONG_LENGTH);
+		return;
+	}
+
+	byte *payload = message + 7;
+	byte *challenge = payload;
+	byte *app_param = payload+32;
+
+	memset(public_k, 0, sizeof(public_k));
+	memset(private_k, 0, sizeof(private_k));
+
+	uECC_make_key(public_k + 1, private_k, curve); //so we ca insert 0x04
+
+	public_k[0] = 0x04;
+
+	DISPLAY_IF_DEBUG("PUBLIC KEY");
+	debug_hex_loop(public_k, 0, sizeof(public_k));
+	DISPLAY_IF_DEBUG("\nPRIV KEY");
+	debug_hex_loop(private_k, 0, sizeof(private_k));
+	DISPLAY_IF_DEBUG("\n\n");
+
+	//construct hash
+	memcpy(handle, app_param, 32);
+	memcpy(handle+32, private_k, 32);
+
+	for (int i =0; i < 64; i++) {
+		handle[i] ^= handlekey[i % (sizeof(handlekey)-1)];
+	}
+
+	SHA256_CTX ctx;
+	sha256_init(&ctx);
+
+	cont_response[0] = 0x00;
+
+	sha256_update(&ctx, cont_response, 1);
+
+	DISPLAY_IF_DEBUG("APP_PARAM");
+	debug_hex_loop(app_param, 0, 32);
+	DISPLAY_IF_DEBUG("\n");
+
+	sha256_update(&ctx, app_param, 32);
+
+	DISPLAY_IF_DEBUG("CHALLENGE");
+	debug_hex_loop(challenge, 0, 32);
+	DISPLAY_IF_DEBUG("\n");
+
+	sha256_update(&ctx, challenge, 32);
+
+	DISPLAY_IF_DEBUG("HANDLE");
+	debug_hex_loop(handle, 0, 64);
+	DISPLAY_IF_DEBUG("\n");
+
+	sha256_update(&ctx, handle, 64);
+
+	sha256_update(&ctx, public_k, 65);
+
+	DISPLAY_IF_DEBUG("PUBLIC KEY");
+	debug_hex_loop(public_k, 0, 65);
+	DISPLAY_IF_DEBUG("\n");
+
+	sha256_final(&ctx, sha256_hash);
+
+	DISPLAY_IF_DEBUG("HASH");
+	debug_hex_loop(sha256_hash, 0, 32);
+	DISPLAY_IF_DEBUG("\n");
+
+	uint8_t *signature = response;
+
+	uint8_t tmp[32 + 32 + 64];
+	SHA256_HashContext ectx = {{&init_SHA256, &update_SHA256, &finish_SHA256, 64, 32, tmp}};
+
+	uECC_sign_deterministic((uint8_t *) attestation_key,
+																			sha256_hash,
+																			32,
+																			&ectx.uECC,
+																			signature,
+																			curve);
+
+	int packet_length = 0;
+
+	cont_response[packet_length++] = 0x05;
+
+	memcpy(cont_response + packet_length, public_k, 65);
+
+	packet_length += 65;
+
+	cont_response[packet_length++] = 64; //length of handle
+
+	memcpy(cont_response+packet_length, handle, 64);
+
+	packet_length += 64;
+
+	memcpy(cont_response+packet_length, attestation_DER_cert, sizeof(attestation_DER_cert));
+
+	packet_length += sizeof(attestation_DER_cert)-1;
+
+	//convert signature format
+	//http://bitcoin.stackexchange.com/questions/12554/why-the-signature-is-always-65-13232-bytes-long
+
+	cont_response[packet_length++] = 0x30; //header: compound structure
+	uint8_t *total_len = &cont_response[packet_length];
+	cont_response[packet_length++] = 0x44; //total length (32 + 32 + 2 + 2)
+	cont_response[packet_length++] = 0x02;  //header: integer
+
+	if (signature[0]>0x7f) {
+   	cont_response[packet_length++] = 33;  //33 byte
+		cont_response[packet_length++] = 0;
+		(*total_len)++; //update total length
+	}  else {
+		cont_response[packet_length++] = 32;  //32 byte
+	}
+
+	memcpy(cont_response+packet_length, signature, 32); //R value
+	packet_length +=32;
+	cont_response[packet_length++] = 0x02;  //header: integer
+
+	if (signature[32]>0x7f) {
+
+		cont_response[packet_length++] = 33;  //32 byte
+		cont_response[packet_length++] = 0;
+
+		(*total_len)++;	//update total length
+
+	} else {
+
+		cont_response[packet_length++] = 32;  //32 byte
+
+	}
+
+	memcpy(cont_response+packet_length, signature+32, 32); //R value
+	packet_length +=32;
+
+	byte *last = cont_response+packet_length;
+	ADD_SW_OK(last);
+	packet_length += 2;
+
+	send_response_cont(buffer, packet_length);
+
+}
+
+void protocol_authenticate() {
+	// test implementation of u2f authenticate for debugging
+
 
 }
 
@@ -509,13 +701,13 @@ void process_message(byte *buffer) {
 
 		case U2F_REGISTER: {
 
-			// TODO: implement register
+			return protocol_register(buffer, message, reqlength);
 
 			} break;
 
 		case U2F_AUTHENTICATE: {
 
-			// TODO: implement authenticate
+			return protocol_authenticate();
 
 			} break;
 
@@ -528,13 +720,13 @@ void process_message(byte *buffer) {
 
 				SET_MSG_LEN(buffer, 8); //len("U2F_V2") + 2 byte SW
 
-				byte *datapart = buffer + 7;
+				byte *payload = buffer + 7;
 
-				memcpy(datapart, "U2F_V2", 6);
+				memcpy(payload, "U2F_V2", 6);
 
-				datapart += 6;
+				payload += 6;
 
-				ADD_SW_OK(datapart);
+				ADD_SW_OK(payload);
 
 				RawHID.send(buffer, 100);
 
