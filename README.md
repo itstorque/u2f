@@ -5,9 +5,29 @@ u2f dongle implementation for MIT's 6.858 - Spring 2022
 ## Project Structure
 
 - `arduino/`: arduino code that is uploaded to the actual dongle
+  - receive -> origin, hash(challenge, challenge_id)
+  - send -> certificate et al.
 - `server/`: test server in python
+  - receive ->
+  - send ->
 - `chrome/`: js that established a connection between the dongle and chrome via usb protocol
 - `google-u2f-ref-code`: git submodule of google's u2f reference code
+
+## Implementation
+
+![doc/security_key_flow_diagram.png](doc/security_key_flow_diagram.png)
+
+For communication protocol, look at
+
+- https://fidoalliance.org/specs/u2f-specs-master/fido-u2f-hid-protocol.html#:~:text=With%20a%20packet%20size%20of,%2D%205)%20%3D%207609%20bytes
+- https://fidoalliance.org/specs/fido-v2.0-id-20180227/fido-client-to-authenticator-protocol-v2.0-id-20180227.html
+
+## Getting Started
+To set up the submodule, run:
+```
+git submodule init
+git submodule update --init --recursive
+```
 
 ## arduino notes
 
@@ -20,6 +40,18 @@ Right now, we only have it running on the Feather Bluefruit 32u4.
 Our other options are:
 - Install TinyUSB from a package manager.
 - MIDIUSB or some other MIDI interface that feeds into chrome.
+
+`about://device-log`: see all USB device related events
+
+`about://usb-internals`: simulate connection and disconnection of virtual WebUSB devices
+
+Test pages:
+- https://webauthn.bin.coffee/  
+- https://demo.yubico.com/webauthn-technical/registration
+- https://akisec.com/demo/
+- https://webauthn.io/
+
+might need to use `uECC` package (https://github.com/kmackay/micro-ecc) for `ECDH` and `ECDSA`. The source was copied along with the license into `arduino/main` replacing `.inc` files with `.h`.
 
 ## References
 

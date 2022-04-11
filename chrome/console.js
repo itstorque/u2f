@@ -1,8 +1,6 @@
 (function() {
   'use strict';
 
-  // hterm.defaultStorage = new lib.Storage.Local();
-
   var port;
 
   let textEncoder = new TextEncoder();
@@ -25,11 +23,6 @@
             send(e.target.value + "\0");
         }
     });
-
-    // t.decorate(document.querySelector('#terminal'));
-    // t.setWidth(80);
-    // t.setHeight(24);
-    // t.installKeyboard();
 
     function connect() {
       console.log('Connecting to ' + port.device_.productName + '...');
