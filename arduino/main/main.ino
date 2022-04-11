@@ -50,7 +50,7 @@
 
 #endif
 
-// managing communication channel
+#pragma mark - managing communication channel
 
 #define CHANNEL_COUNT 4
 
@@ -66,7 +66,7 @@ struct CHANNEL_STATUS {
 
 CHANNEL_STATUS channel_status[CHANNEL_COUNT];
 
-// packet helpers
+#pragma mark - packet helpers
 
 // PACKETS ARE DEFINED AS INITIAL AND CONTINUATION WHERE
 
@@ -99,7 +99,9 @@ CHANNEL_STATUS channel_status[CHANNEL_COUNT];
 	(b)[5] = ((v) >> 8) & 0xff;  (b)[6] = (v) & 0xff; \
 } while(0)
 
-// u2f hid transport headers from
+#define PACKET_DELAY_US 2500
+
+#pragma mark - u2f hid transport headers from
 // https://fidoalliance.org/specs/fido-u2f-v1.2-ps-20170411/inc/u2f_hid.h
 // TODO: move these into a header file later...
 
@@ -204,7 +206,7 @@ CHANNEL_STATUS channel_status[CHANNEL_COUNT];
 	#define ERR_SYNC_FAIL           0x0b    // SYNC command failed
 	#define ERR_OTHER               0x7f    // Other unspecified error
 
-// u2f raw message format header from
+#pragma mark - u2f raw message format header from
 // https://fidoalliance.org/specs/fido-u2f-v1.2-ps-20170411/inc/u2f.h
 // TODO: move into a separate header file too
 
@@ -247,7 +249,7 @@ CHANNEL_STATUS channel_status[CHANNEL_COUNT];
 
 #define ADD_SW_OK(x) do { (*x++)=0x90; (*x++)=0x00;} while (0)
 
-// i/o buffers
+#pragma mark - i/o buffers
 
 byte recieved[64];
 byte response[64];
@@ -260,12 +262,14 @@ int cont_data_offset;
 byte cont_recieved[1024];
 byte cont_response[1024];
 
-// button setup
+#pragma mark - button setup
 
 #ifdef NO_BUTTON
 	// simulate button without hardware...
 	int button_pressed = 0;
 #endif
+
+#pragma mark - SETUP
 
 // TODO: hash RNG using SHA-256
 // random number generator, copied from:
@@ -308,7 +312,7 @@ void setup() {
 
 }
 
-// COMMUNICATION
+#pragma mark - COMMUNICATION
 
 int init_response(byte *buffer) {
 	// TODO: Implement this
@@ -402,17 +406,18 @@ void process_packet(byte *buffer) {
 
 				memcpy(response, buffer, 4); //copy channel id
 
-				response[4] = p++;
+				response[4] = p;
 
 				memcpy(response + 5, buffer + offset, MAX_PACKET_LENGTH_CONT);
 
 				RawHID.send(response, 100);
 
 				packet_length -= MAX_PACKET_LENGTH_CONT;
+				offset        += MAX_PACKET_LENGTH_CONT;
 
-				offset += MAX_PACKET_LENGTH_CONT;
+				p++;
 
-				delayMicroseconds(2500);
+				delayMicroseconds(PACKET_DELAY_US);
 
 			}
 
@@ -488,6 +493,53 @@ void process_message(byte *buffer) {
 			} break;
 
 		default: { respondErrorPDU(buffer, SW_INS_NOT_SUPPORTED); };
+
+	}
+
+}
+
+void send_response_cont(byte *request, int packet_length) {
+	// send message with cont. packets
+
+	DISPLAY_IF_DEBUG("send_response of length");
+	DISPLAY_IF_DEBUG(packet_length);
+
+	debug_hex_loop(cont_response, 0, packet_length);
+	DISPLAY_IF_DEBUG("\n\n\n\n");
+
+	// copy channel id
+	// note that this will always sit in our msg at index 4,
+	// so no need to recopy it in cont. packets
+	memcpy(response, request, 4);
+
+	response[4] = U2FHID_MSG;
+
+	int r = min(packet_length, MAX_PACKET_LENGTH_INIT);
+
+	SET_MSG_LEN(response, packet_length);
+
+	memcpy(response + 7, cont_response, r);
+
+	RawHID.send(response, 100);
+
+	packet_length -= r;
+
+	byte p = 0;
+
+	int offset = MAX_PACKET_LENGTH_INIT;
+
+	while (packet_length > 0) {
+
+		response[4] = p++;
+
+		memcpy(response + 5, cont_response + offset, MAX_PACKET_LENGTH_CONT);
+
+		RawHID.send(response, 100);
+
+		packet_length -= MAX_PACKET_LENGTH_CONT;
+		offset        += MAX_PACKET_LENGTH_CONT;
+
+		delayMicroseconds(PACKET_DELAY_US);
 
 	}
 
