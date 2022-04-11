@@ -238,14 +238,14 @@ CHANNEL_STATUS channel_status[CHANNEL_COUNT];
 	#define U2F_SW_COMMAND_NOT_ALLOWED      0x6986 // SW_COMMAND_NOT_ALLOWED
 	#define U2F_SW_INS_NOT_SUPPORTED        0x6D00 // SW_INS_NOT_SUPPORTED
 
-// Command status responses
+#pragma mark - Command status responses
 // Sourced from ISO-7816
 	#define SW_NO_ERROR                       0x9000
 	#define SW_CONDITIONS_NOT_SATISFIED       0x6985
 	#define SW_WRONG_DATA                     0x6A80
-	#define SW_WRONG_LENGTH                     0x6700
-	#define SW_INS_NOT_SUPPORTED 0x6D00
-	#define SW_CLA_NOT_SUPPORTED 0x6E00
+	#define SW_WRONG_LENGTH                   0x6700
+	#define SW_INS_NOT_SUPPORTED              0x6D00
+	#define SW_CLA_NOT_SUPPORTED              0x6E00
 
 #define ADD_SW_OK(x) do { (*x++)=0x90; (*x++)=0x00;} while (0)
 
@@ -268,6 +268,28 @@ byte cont_response[1024];
 	// simulate button without hardware...
 	int button_pressed = 0;
 #endif
+
+#pragma mark - COUNTER
+// using EEPROM to keep a counter
+
+int getCounter() {
+
+	unsigned int address = 0;
+	unsigned int value;
+
+	EEPROM.get(address, value);
+
+	return value;
+
+}
+
+void setCounter(int value) {
+
+	unsigned int address = 0;
+
+	EEPROM.put(address, value);
+
+}
 
 #pragma mark - SETUP
 
@@ -301,6 +323,33 @@ int RNG(uint8_t *dest, unsigned size) {
 
 	return 1;
 
+}
+
+// SHA-256 Setup
+
+#define SHA256_BLOCK_LENGTH  64
+#define SHA256_DIGEST_LENGTH 32
+
+typedef struct SHA256_HashContext {
+    uECC_HashContext uECC;
+    SHA256_CTX ctx;
+} SHA256_HashContext;
+
+static void init_SHA256(const uECC_HashContext *base) {
+    SHA256_HashContext *context = (SHA256_HashContext *)base;
+    SHA256_Init(&context->ctx);
+}
+
+static void update_SHA256(const uECC_HashContext *base,
+                          const uint8_t *message,
+                          unsigned message_size) {
+    SHA256_HashContext *context = (SHA256_HashContext *)base;
+    SHA256_Update(&context->ctx, message, message_size);
+}
+
+static void finish_SHA256(const uECC_HashContext *base, uint8_t *hash_result) {
+    SHA256_HashContext *context = (SHA256_HashContext *)base;
+    SHA256_Final(hash_result, &context->ctx);
 }
 
 void setup() {
