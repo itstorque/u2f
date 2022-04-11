@@ -5,7 +5,7 @@
     - 50th percentile = headers for code
 
   - ashikav:
-    - 99th percentile = headers and function names/general organization of code
+    - **[done]** 99th percentile = headers and function names/general organization of code
     - 50th percentile = perform client+website registration flow with dummy data
 
   - torque:

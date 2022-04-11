@@ -17,6 +17,11 @@ u2f dongle implementation for MIT's 6.858 - Spring 2022
 
 ![doc/security_key_flow_diagram.png](doc/security_key_flow_diagram.png)
 
+For communication protocol, look at
+
+- https://fidoalliance.org/specs/u2f-specs-master/fido-u2f-hid-protocol.html#:~:text=With%20a%20packet%20size%20of,%2D%205)%20%3D%207609%20bytes
+- https://fidoalliance.org/specs/fido-v2.0-id-20180227/fido-client-to-authenticator-protocol-v2.0-id-20180227.html
+
 ## Getting Started
 To set up the submodule, run:
 ```
@@ -46,7 +51,7 @@ Test pages:
 - https://akisec.com/demo/
 - https://webauthn.io/
 
-might need to use `mEcc` package (https://github.com/kmackay/micro-ecc) for `ECDH` and `ECDSA`.
+might need to use `uECC` package (https://github.com/kmackay/micro-ecc) for `ECDH` and `ECDSA`. The source was copied along with the license into `arduino/main` replacing `.inc` files with `.h`.
 
 ## References
 
