@@ -46,6 +46,7 @@
 	#define DISPLAY_HEX_IF_DEBUG(X) do { } while(0) // do nothing avoiding empty statements
 
 	void debug_dump_hex(byte *buffer, int len) { }
+	void debug_hex_loop(byte *data, int start, int end) { }
 
 #endif
 
@@ -637,28 +638,44 @@ void respondErrorPDU(byte *buffer, int err) {
 
 }
 
+void send_u2f_error(byte *buffer, int code) {
+
+	memcpy(response, buffer, 4);
+
+  response[4] = U2FHID_ERROR;
+
+  SET_MSG_LEN(response, 1);
+
+  response[7] = code & 0xff;
+
+	DISPLAY_IF_DEBUG("u2f error:");
+	DISPLAY_IF_DEBUG(code);
+
+	RawHID.send(response, 100);
+}
+
 void error_invalid_channel_id() {
-	// TODO: ERR_MSG_TIMEOUT
+	return send_u2f_error(recieved, ERR_SYNC_FAIL);
 }
 
 void error_timeout() {
-	// TODO: ERR_MSG_TIMEOUT
+	return send_u2f_error(recieved, ERR_MSG_TIMEOUT);
 }
 
 void error_invalid_length() {
-	// TODO: ERR_MSG_INVALID_LENGTH
+	return send_u2f_error(recieved, ERR_INVALID_LEN);
 }
 
 void error_invalid_seq() {
-	// TODO: ERR_INVALID_SEQ
+	return send_u2f_error(recieved, ERR_INVALID_SEQ);
 }
 
 void error_channel_busy() {
-
+	return send_u2f_error(recieved, ERR_CHANNEL_BUSY);
 }
 
 void error_invalid_cmd() {
-
+	return send_u2f_error(recieved, ERR_INVALID_CMD);
 }
 
 void loop() {
