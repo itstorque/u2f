@@ -23,10 +23,10 @@ void registerOrigin(RegistrationInput input)
 // store(origin, k_priv)
 // the private key and origin are encrypted via K_wrap
 // The handle is sent to the server and is stored there.
-Handle store(Origin origin, EncryptionKey k_priv)
+byte store(byte origin, EncryptionKey k_priv)
 {
     Encryptable origin_enc; // generate using origin
-    Handle obscure_o = encrypt(K_app, origin_enc);
+    byte obscure_o = encrypt(K_app, origin_enc);
     // interleave the obfuscated origin with the private key, encrypt it with K_wrap
     // that is the plaintext
     Encryptable plaintext;
@@ -534,7 +534,7 @@ void process_message(byte *buffer)
 
     case U2F_REGISTER:
     {
-
+        register_origin(PAYLOAD, reqlength);
         // TODO: implement register
     }
     break;
