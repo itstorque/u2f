@@ -39,8 +39,8 @@ byte store(byte origin, EncryptionKey k_priv)
 #include <EEPROM.h>
 
 // encryption libs
-#include "sha256.h"
-#include "uECC.h"
+#include "src/sha256/sha256.h"
+#include "src/uECC/uECC.h"
 
 // debug state
 #undef DEBUG
@@ -97,7 +97,7 @@ void debug_hex_loop(byte *data, int start, int end) {}
 
 #endif
 
-// managing communication channel
+#pragma mark - managing communication channel
 
 #define CHANNEL_COUNT 4
 
@@ -119,7 +119,7 @@ struct CHANNEL_STATUS
 
 CHANNEL_STATUS channel_status[CHANNEL_COUNT];
 
-// packet helpers
+#pragma mark - packet helpers
 
 // PACKETS ARE DEFINED AS INITIAL AND CONTINUATION WHERE
 
@@ -155,7 +155,9 @@ CHANNEL_STATUS channel_status[CHANNEL_COUNT];
         (b)[6] = (v)&0xff;          \
     } while (0)
 
-// u2f hid transport headers from
+#define PACKET_DELAY_US 2500
+
+#pragma mark - u2f hid transport headers from
 // https://fidoalliance.org/specs/fido-u2f-v1.2-ps-20170411/inc/u2f_hid.h
 // TODO: move these into a header file later...
 
@@ -264,7 +266,7 @@ typedef struct
 #define ERR_SYNC_FAIL 0x0b     // SYNC command failed
 #define ERR_OTHER 0x7f         // Other unspecified error
 
-// u2f raw message format header from
+#pragma mark - u2f raw message format header from
 // https://fidoalliance.org/specs/fido-u2f-v1.2-ps-20170411/inc/u2f.h
 // TODO: move into a separate header file too
 
@@ -296,7 +298,7 @@ typedef struct
 #define U2F_SW_COMMAND_NOT_ALLOWED 0x6986      // SW_COMMAND_NOT_ALLOWED
 #define U2F_SW_INS_NOT_SUPPORTED 0x6D00        // SW_INS_NOT_SUPPORTED
 
-// Command status responses
+#pragma mark - Command status responses
 // Sourced from ISO-7816
 #define SW_NO_ERROR 0x9000
 #define SW_CONDITIONS_NOT_SATISFIED 0x6985
@@ -312,7 +314,7 @@ typedef struct
         (*x++) = 0x00; \
     } while (0)
 
-// i/o buffers
+#pragma mark - i/o buffers
 
 byte recieved[64];
 byte response[64];
@@ -325,12 +327,36 @@ int cont_data_offset;
 byte cont_recieved[1024];
 byte cont_response[1024];
 
-// button setup
+#pragma mark - button setup
 
 #ifdef NO_BUTTON
 // simulate button without hardware...
 int button_pressed = 0;
 #endif
+
+#pragma mark - COUNTER
+// using EEPROM to keep a counter
+
+int getCounter()
+{
+
+    unsigned int address = 0;
+    unsigned int value;
+
+    EEPROM.get(address, value);
+
+    return value;
+}
+
+void setCounter(int value)
+{
+
+    unsigned int address = 0;
+
+    EEPROM.put(address, value);
+}
+
+#pragma mark - SETUP
 
 // TODO: hash RNG using SHA-256
 // random number generator, copied from:
@@ -369,6 +395,36 @@ int RNG(uint8_t *dest, unsigned size)
 
     return 1;
 }
+#pragma mark - SHA-256 Setup
+
+#define SHA256_BLOCK_LENGTH 64
+#define SHA256_DIGEST_LENGTH 32
+
+typedef struct SHA256_HashContext
+{
+    uECC_HashContext uECC;
+    SHA256_CTX ctx;
+} SHA256_HashContext;
+
+void init_SHA256(uECC_HashContext *base)
+{
+    SHA256_HashContext *context = (SHA256_HashContext *)base;
+    sha256_init(&context->ctx);
+}
+
+void update_SHA256(uECC_HashContext *base,
+                   const uint8_t *message,
+                   unsigned message_size)
+{
+    SHA256_HashContext *context = (SHA256_HashContext *)base;
+    sha256_update(&context->ctx, message, message_size);
+}
+
+void finish_SHA256(uECC_HashContext *base, uint8_t *hash_result)
+{
+    SHA256_HashContext *context = (SHA256_HashContext *)base;
+    sha256_final(&context->ctx, hash_result);
+}
 
 void setup()
 {
@@ -379,7 +435,7 @@ void setup()
     Serial.println("U2F");
 }
 
-// COMMUNICATION
+#pragma mark - COMMUNICATION
 
 int init_response(byte *buffer)
 {
@@ -482,20 +538,26 @@ void process_packet(byte *buffer)
 
                 response[4] = p++;
 
-                memcpy(response + 5, buffer + offset, MAX_PACKET_LENGTH_CONT);
+                response[4] = p;
 
                 RawHID.send(response, 100);
 
                 packet_length -= MAX_PACKET_LENGTH_CONT;
 
+                packet_length -= MAX_PACKET_LENGTH_CONT;
                 offset += MAX_PACKET_LENGTH_CONT;
 
-                delayMicroseconds(2500);
+                p++;
+
+                delayMicroseconds(PACKET_DELAY_US);
             }
 
             DISPLAY_IF_DEBUG("Sending large ping response");
         }
     }
+
+    if (cmd == U2FHID_MSG)
+        process_message(buffer);
 
     if (cmd == U2FHID_MSG)
         process_message(buffer);
@@ -576,7 +638,54 @@ void process_message(byte *buffer)
     }
 }
 
-// CHANNEL MANAGERS
+void send_response_cont(byte *request, int packet_length)
+{
+    // send message with cont. packets
+
+    DISPLAY_IF_DEBUG("send_response of length");
+    DISPLAY_IF_DEBUG(packet_length);
+
+    debug_hex_loop(cont_response, 0, packet_length);
+    DISPLAY_IF_DEBUG("\n\n\n\n");
+
+    // copy channel id
+    // note that this will always sit in our msg at index 4,
+    // so no need to recopy it in cont. packets
+    memcpy(response, request, 4);
+
+    response[4] = U2FHID_MSG;
+
+    int r = min(packet_length, MAX_PACKET_LENGTH_INIT);
+
+    SET_MSG_LEN(response, packet_length);
+
+    memcpy(response + 7, cont_response, r);
+
+    RawHID.send(response, 100);
+
+    packet_length -= r;
+
+    byte p = 0;
+
+    int offset = MAX_PACKET_LENGTH_INIT;
+
+    while (packet_length > 0)
+    {
+
+        response[4] = p++;
+
+        memcpy(response + 5, cont_response + offset, MAX_PACKET_LENGTH_CONT);
+
+        RawHID.send(response, 100);
+
+        packet_length -= MAX_PACKET_LENGTH_CONT;
+        offset += MAX_PACKET_LENGTH_CONT;
+
+        delayMicroseconds(PACKET_DELAY_US);
+    }
+}
+
+#pragma mark - CHANNEL MANAGERS
 
 int find_channel_index(int channel_id)
 {
