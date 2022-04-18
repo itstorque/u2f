@@ -1,89 +1,90 @@
-#include <src.h>
-#include <uECC.h>
-#include <sha256.h>
+#include "src.h"
 #include <stdlib.h>
 #include <cstring>
+
+#include "sha256/sha256.h"
+#include "uECC/uECC.h"
 KeyPair generateKeyPair(uECC_Curve curve)
 {
     KeyPair k;
     uECC_make_key(k.publicKey.key, k.privateKey.key, curve);
+    k.publicKey.size = uECC_curve_public_key_size(curve);
+    k.privateKey.size = uECC_curve_private_key_size(curve);
     return k;
 }
 
 int RNG(uint8_t *dest, unsigned size)
 {
-    // Use the least-significant bits from the ADC for an unconnected pin (or connected to a source of
-    // random noise). This can take a long time to generate random data if the result of analogRead(0)
-    // doesn't change very frequently.
-    while (size)
+    for (int i = 0; i < size; i++)
     {
-        uint8_t val = 0;
-        for (unsigned i = 0; i < 8; ++i)
-        {
-            int init = analogRead(0);
-            int count = 0;
-            while (analogRead(0) == init)
-            {
-                ++count;
-            }
-
-            if (count == 0)
-            {
-                val = (val << 1) | (init & 0x01);
-            }
-            else
-            {
-                val = (val << 1) | (count & 0x01);
-            }
-        }
-        *dest = val;
-        ++dest;
-        --size;
+        dest[i] = rand();
     }
-    // NOTE: it would be a good idea to hash the resulting random data using SHA-256 or similar.
     return 1;
 }
 
-// random data
+void HexDump(const char *c, int size)
+{
+
+    for (int i = 0; i < size; i++)
+    {
+        printf("%02x ", (u_int8_t)c[i]);
+    }
+    printf("\n");
+    return;
+    {
+        for (int i = 0; i < size; i++)
+        {
+            std::cout << std::hex << (unsigned int)c[i] << " ";
+        }
+        std::cout << std::endl;
+    }
+}
+
+// 'u', 'w' repeated 52 times
 byte certificate[52] = {
-    's',
-    'e',
-    'c',
-    'r',
-    'e',
-    't',
-    ' ',
-    'c',
-    'e',
-    'r',
-    't',
-    'i',
-    'f',
-    'i',
-    'c',
-    'a',
-    't',
-    'e',
-    ' ',
-    'c',
-    'o',
-    'n',
-    't',
-    'e',
-    'n',
-    't',
-    ' ',
-    'i',
-    'n',
-    ' ',
-    'c',
-    'o',
-    'm',
-    'p',
-    'l',
-    'e',
-    'x',
-};
+    'u',
+    'w',
+    'u',
+    'u',
+    'w',
+    'u',
+    'u',
+    'w',
+    'u',
+    'u',
+    'w',
+    'u',
+    'u',
+    'w',
+    'u',
+    'u',
+    'w',
+    'u',
+    'u',
+    'w',
+    'u',
+    'u',
+    'w',
+    'u',
+    'u',
+    'w',
+    'u',
+    'u',
+    'w',
+    'u',
+    'u',
+    'w',
+    'u',
+    'u',
+    'w',
+    'u',
+    'u',
+    'w',
+    'u',
+    'u', 'w', 'u',
+    'u', 'w', 'u',
+    'u', 'w', 'u',
+    'u', 'w', 'u', '.'};
 
 byte *register_origin(byte *message, int size)
 {
@@ -95,7 +96,6 @@ byte *register_origin(byte *message, int size)
     Handle h;
     uECC_Curve curve = uECC_secp256r1();
     KeyPair kp = generateKeyPair(curve);
-
     byte *response;
 
     challange = message; // TODO: check if this is correct, maybe needs to be +1
@@ -105,14 +105,28 @@ byte *register_origin(byte *message, int size)
 
     signature = (byte *)malloc(2 * uECC_curve_private_key_size(curve));
 
-    int data_to_sign_len = 1 + 32 + 32 + h.size + 65;
-    byte *data_to_sign = (byte *)malloc(data_to_sign_len);
+    // generate handle
 
-    *data_to_sign = 0x00;
+    store(application, 32, kp.publicKey, &h);
+
+    int data_to_sign_len = 1 + 32 + 32 + h.size + kp.publicKey.size;
+    byte *data_to_sign;
+    data_to_sign = (byte *)malloc(data_to_sign_len);
+
+    if (data_to_sign == NULL)
+    {
+        char *c = "hello 2, malloc failed";
+        response = (byte *)c;
+        return response;
+    }
+
+    // copy zero in the first place
+    char zero = '\0';
+    memccpy(data_to_sign, &zero, 0, 1);
     memcpy(data_to_sign + 1, application, 32);
     memcpy(data_to_sign + 33, challange, 32);
     memcpy(data_to_sign + 65, h.data, h.size);
-    memcpy(data_to_sign + 65 + h.size, kp.publicKey.key, 65);
+    memcpy(data_to_sign + 65 + h.size, kp.publicKey.key, kp.publicKey.size);
 
     SHA256_CTX ctx;
 
@@ -122,7 +136,29 @@ byte *register_origin(byte *message, int size)
     sha256_update(&ctx, data_to_sign, data_to_sign_len);
     sha256_final(&ctx, hash);
 
+    printf("\ndata_to_sign: ");
+    HexDump((char *)data_to_sign, data_to_sign_len);
+    printf("\n\n");
+
+    printf("\npublic key: ");
+    HexDump((char *)kp.publicKey.key, 32);
+    printf("\n\n");
+
+    printf("\nhash: ");
+    HexDump((char *)hash, 32);
+    printf("\n\n");
+
+    printf("\nhandle: ");
+    HexDump((char *)h.data, h.size);
+    printf("\n\n");
+
+    free(data_to_sign);
+
     uECC_sign(kp.privateKey.key, hash, 32, signature, curve);
+
+    printf("\nsignature: ");
+    HexDump((char *)signature, 2 * uECC_curve_private_key_size(curve));
+    printf("\n\n");
 
     // generating cert
 
@@ -138,6 +174,12 @@ byte *register_origin(byte *message, int size)
     memcpy(response + 67, h.data, h.size);
     memcpy(response + 67 + h.size, cert.data, cert.size);
     memcpy(response + 67 + h.size + cert.size, signature, 2 * uECC_curve_private_key_size(curve));
+
+    printf("\nresponse size: ");
+    printf("%d", 1 + 65 + 1 + h.size + cert.size + 2 * uECC_curve_private_key_size(curve));
+    printf("\n\n");
+
+    free(signature);
 
     return response;
 }

@@ -1,12 +1,13 @@
 #ifndef src_h
 #define src_h
 #include <stdint.h>
-#include <uECC.h>
-#include <sha256.h>
-typedef unsigned char byte;
+#include "sha256/sha256.h"
+#include "uECC/uECC.h"
+#include <iostream>
+typedef u_int8_t byte;
 struct EncryptionKey
 {
-    byte key[32];
+    byte key[128];
     u_int8_t size;
 };
 
@@ -15,29 +16,11 @@ struct KeyPair
     EncryptionKey publicKey;
     EncryptionKey privateKey;
 };
-struct Origin
-{
-};
-struct Hash
-{
-};
 
 struct Handle
 {
     int size;
     byte *data; // data is app_hash + k_priv
-};
-
-struct RegistrationInput
-{
-    Origin origin;
-    Hash c;
-};
-
-struct Encryptable
-{
-    int size;
-    byte data[size];
 };
 
 struct Signature
@@ -49,10 +32,6 @@ struct Cert
     byte *data;
     int size;
 };
-
-Signature sign(Origin, Handle h, Hash c);
-
-byte encrypt(EncryptionKey K_wrap, Encryptable origin);
 
 KeyPair generateKeyPair(uECC_Curve curve);
 
@@ -124,4 +103,5 @@ signature = sign( app_id, user_presence_byte,  counter, challenge )
  */
 byte *authenticate_origin(byte *message, int size);
 
+void HexDump(const char *c, int size);
 #endif
