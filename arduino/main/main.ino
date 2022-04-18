@@ -109,7 +109,7 @@ void loop() {
 	if (recv > 0) {
 
 		DISPLAY_IF_DEBUG("recieved packet");
-		debug_dump_hex(recieved, recv);
+		DEBUG_DUMP_HEX(recieved, recv);
 
 		int channel_id;
 		memcpy(&channel_id, recieved, sizeof(channel_id));

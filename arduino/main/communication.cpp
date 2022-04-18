@@ -129,7 +129,7 @@ void process_message(byte *buffer) {
 	byte *message = buffer + 7;
 
 	DISPLAY_IF_DEBUG("DATA:");
-	debug_hex_loop(buffer, 7, 7+packet_length);
+	DEBUG_HEX_LOOP(buffer, 7, 7+packet_length);
 
 	//todo: check CLA = 0
 	byte CLA = message[0];
@@ -192,7 +192,7 @@ void send_response_cont(byte *request, int packet_length) {
 	DISPLAY_IF_DEBUG("send_response of length");
 	DISPLAY_IF_DEBUG(packet_length);
 
-	debug_hex_loop(cont_response, 0, packet_length);
+	DEBUG_HEX_LOOP(cont_response, 0, packet_length);
 	DISPLAY_IF_DEBUG("\n\n\n\n");
 
 	// copy channel id
