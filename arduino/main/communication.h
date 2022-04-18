@@ -15,15 +15,14 @@ extern byte cont_recieved[1024];
 extern byte cont_response[1024];
 
 #include "channels.h"
-
 extern CHANNEL_STATUS channel_status[CHANNEL_COUNT];
 
 #include "message_headers.h"
 #include "packets.h"
 
-// END CHANNELS
-
 #include "error_handling.h"
+
+#include "protocol.h"
 
 int init_response(byte *buffer);
 
