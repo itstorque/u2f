@@ -28,4 +28,4 @@ void update_SHA256(uECC_HashContext *base,
 
 void finish_SHA256(uECC_HashContext *base, uint8_t *hash_result);
 
-const struct uECC_Curve_t * curve; //P-256
+struct uECC_Curve_t * curve = uECC_secp256r1(); //P-256

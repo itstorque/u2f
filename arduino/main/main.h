@@ -6,7 +6,12 @@
 #include "src/sha256/sha256.h"
 #include "src/uECC/uECC.h"
 
+
+
+#ifndef encryption
+#define encryption
 #include "encryption.h"
+#endif
 
 // persistent memory lib
 #include <EEPROM.h>

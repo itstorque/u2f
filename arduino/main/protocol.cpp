@@ -1,6 +1,6 @@
 #include "protocol.h"
 
-void protocol_register(byte *buffer, byte *message, int reqlength) {
+void protocol_register(byte (*respond)(byte, int), byte *buffer, byte *message, int reqlength) {
 	// test implementation of u2f register for debugging
 
 	if (reqlength!=64) {
@@ -20,9 +20,9 @@ void protocol_register(byte *buffer, byte *message, int reqlength) {
 	public_k[0] = 0x04;
 
 	DISPLAY_IF_DEBUG("PUBLIC KEY");
-	debug_hex_loop(public_k, 0, sizeof(public_k));
+	DEBUG_HEX_LOOP(public_k, 0, sizeof(public_k));
 	DISPLAY_IF_DEBUG("\nPRIV KEY");
-	debug_hex_loop(private_k, 0, sizeof(private_k));
+	DEBUG_HEX_LOOP(private_k, 0, sizeof(private_k));
 	DISPLAY_IF_DEBUG("\n\n");
 
 	//construct hash
@@ -41,19 +41,19 @@ void protocol_register(byte *buffer, byte *message, int reqlength) {
 	sha256_update(&ctx, cont_response, 1);
 
 	DISPLAY_IF_DEBUG("APP_PARAM");
-	debug_hex_loop(app_param, 0, 32);
+	DEBUG_HEX_LOOP(app_param, 0, 32);
 	DISPLAY_IF_DEBUG("\n");
 
 	sha256_update(&ctx, app_param, 32);
 
 	DISPLAY_IF_DEBUG("CHALLENGE");
-	debug_hex_loop(challenge, 0, 32);
+	DEBUG_HEX_LOOP(challenge, 0, 32);
 	DISPLAY_IF_DEBUG("\n");
 
 	sha256_update(&ctx, challenge, 32);
 
 	DISPLAY_IF_DEBUG("HANDLE");
-	debug_hex_loop(handle, 0, 64);
+	DEBUG_HEX_LOOP(handle, 0, 64);
 	DISPLAY_IF_DEBUG("\n");
 
 	sha256_update(&ctx, handle, 64);
@@ -61,13 +61,13 @@ void protocol_register(byte *buffer, byte *message, int reqlength) {
 	sha256_update(&ctx, public_k, 65);
 
 	DISPLAY_IF_DEBUG("PUBLIC KEY");
-	debug_hex_loop(public_k, 0, 65);
+	DEBUG_HEX_LOOP(public_k, 0, 65);
 	DISPLAY_IF_DEBUG("\n");
 
 	sha256_final(&ctx, sha256_hash);
 
 	DISPLAY_IF_DEBUG("HASH");
-	debug_hex_loop(sha256_hash, 0, 32);
+	DEBUG_HEX_LOOP(sha256_hash, 0, 32);
 	DISPLAY_IF_DEBUG("\n");
 
 	uint8_t *signature = response;
@@ -140,11 +140,11 @@ void protocol_register(byte *buffer, byte *message, int reqlength) {
 	ADD_SW_OK(last);
 	packet_length += 2;
 
-	send_response_cont(buffer, packet_length);
+	respond(buffer, packet_length);
 
 }
 
-void protocol_authenticate() {
+void protocol_authenticate(byte (*respond)(byte, int)) {
 	// test implementation of u2f authenticate for debugging
 
 

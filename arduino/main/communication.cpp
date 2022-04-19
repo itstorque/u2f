@@ -149,13 +149,13 @@ void process_message(byte *buffer) {
 
 		case U2F_REGISTER: {
 
-			return protocol_register(buffer, message, reqlength);
+			return protocol_register(send_response_cont, buffer, message, reqlength);
 
 			} break;
 
 		case U2F_AUTHENTICATE: {
 
-			return protocol_authenticate();
+			return protocol_authenticate(send_response_cont);
 
 			} break;
 

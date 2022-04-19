@@ -10,7 +10,10 @@
 #include "src/sha256/sha256.h"
 #include "src/uECC/uECC.h"
 
+#ifndef encryption
+#define encryption
 #include "encryption.h"
+#endif
 
 // buffers
 
@@ -33,6 +36,10 @@ extern uint8_t public_k[68]; //64
 extern byte handle[64];
 extern byte sha256_hash[32];
 
-void protocol_register(byte *buffer, byte *message, int reqlength);
+extern char attestation_key[303];
+extern char attestation_DER_cert[304];
+extern char handlekey[20];
 
-void protocol_authenticate();
+void protocol_register(byte (*respond)(byte, int), byte *buffer, byte *message, int reqlength);
+
+void protocol_authenticate(byte (*respond)(byte, int));
