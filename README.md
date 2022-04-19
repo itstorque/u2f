@@ -4,13 +4,57 @@ u2f dongle implementation for MIT's 6.858 - Spring 2022
 
 ## Project Structure
 
-- `arduino/`: arduino code that is uploaded to the actual dongle
-  - `main/`: our implementation
-  - `sha256/`: sha256 implementation from [crypto-algorithms](https://github.com/B-Con/crypto-algorithms).
-  - `uECC/`: ECDH and ECDSA implementation for 8-bit, 32-bit, and 64-bit processors. See [micro-ecc](https://github.com/kmackay/micro-ecc).
-- `server/`: test webauthn capable server in python
-- `chrome/`: js that establishes a connection between the dongle and chrome via usb protocol
-- `google-u2f-ref-code`: git submodule of google's u2f reference code
+- [`microcontroller/`](microcontroller): teensy code that is uploaded
+  - [`main/`](microcontroller/main): our implementation
+  - [`sha256/`](microcontroller/sha256): sha256 implementation from [crypto-algorithms](https://github.com/B-Con/crypto-algorithms).
+  - [`uECC/`](microcontroller/uECC): ECDH and ECDSA implementation for 8-bit, 32-bit, and 64-bit processors. See [micro-ecc](https://github.com/kmackay/micro-ecc).
+- [`server/`](server): test webauthn capable server in python
+- [`chrome/`](chrome): js that establishes a connection between the dongle and chrome via usb protocol
+- [`google-u2f-ref-code`](google-u2f-ref-code): git submodule of google's u2f reference code
+
+### Microcontroller Directory
+
+- [`channels.h`](microcontroller/main/channels.h):
+Definitions that help with channel management
+
+- [`communication.h`](microcontroller/main/communication.h) and 
+[`communication.cpp`](microcontroller/main/communication.cpp):
+Main module that controls HID communication between microcontroller and browser.
+
+- [`debug.h`](microcontroller/main/debug.h):
+Macros that help debugging
+
+- [`encryption.h`](microcontroller/main/encryption.h) and 
+[`encryption.cpp`](microcontroller/main/encryption.cpp):
+Main setup for encryption libs and RNG functions
+
+- [`error_handling.h`](microcontroller/main/error_handling.h) and 
+[`error_handling.cpp`](microcontroller/main/error_handling.cpp):
+Communicating errors within the u2f and sw implementations
+
+- [`global_buffers.h`](microcontroller/main/global_buffers.h):
+Global data buffers used to recieve and send data
+
+- [`keys.h`](microcontroller/main/keys.h):
+Key storage. Ideally move to a secure element
+
+- [`main.h`](microcontroller/main/main.h):
+Header that manages all the imports and sets up extern globals
+
+- [`main.ino`](microcontroller/main/main.ino):
+Run at start up. Manage and respond to HID communication
+
+- [`message_headers.h`](microcontroller/main/message_headers.h):
+Message headers for u2f and sw protocols
+
+- [`packets.h`](microcontroller/main/packets.h) and 
+[`packets.cpp`](microcontroller/main/packets.cpp):
+Main packet manager that follows u2f spec on packets
+
+- [`protocol.h`](microcontroller/main/protocol.h) and 
+[`protocol.cpp`](microcontroller/main/protocol.cpp):
+U2F protocol implementation
+
 
 ## Implementation
 
@@ -28,7 +72,7 @@ git submodule init
 git submodule update --init --recursive
 ```
 
-## Hardware notes
+## Microcontroller notes
 
 Our current implementation is developed and tested on the Teensy 3.2. The hardware limitations
 are requiring RawHID and EEPROM/persistent storage.
