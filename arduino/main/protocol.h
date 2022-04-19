@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include "WProgram.h"
 
+#ifndef protocol_file
+#define protocol_file
+
 #include "debug.h"
 
 #include "message_headers.h"
@@ -14,6 +17,8 @@
 #define encryption
 #include "encryption.h"
 #endif
+
+extern struct uECC_Curve_t * curve; //P-256
 
 // buffers
 
@@ -43,3 +48,5 @@ extern char handlekey[20];
 void protocol_register(byte (*respond)(byte, int), byte *buffer, byte *message, int reqlength);
 
 void protocol_authenticate(byte (*respond)(byte, int));
+
+#endif

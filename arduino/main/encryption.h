@@ -27,5 +27,3 @@ void update_SHA256(uECC_HashContext *base,
                    unsigned message_size);
 
 void finish_SHA256(uECC_HashContext *base, uint8_t *hash_result);
-
-struct uECC_Curve_t * curve = uECC_secp256r1(); //P-256
