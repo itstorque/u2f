@@ -5,9 +5,6 @@
 #include "src/sha256/sha256.h"
 #include "src/uECC/uECC.h"
 
-// TODO: hash RNG using SHA-256
-// random number generator, copied from:
-// https://github.com/kmackay/micro-ecc/blob/master/examples/ecc_test/ecc_test.ino
 int RNG(uint8_t *dest, unsigned size);
 
 // SHA-256 Setup
