@@ -1,35 +1,54 @@
-#include <stdint.h>
-#include "WProgram.h"
-
-#include "debug.h"
-
-extern byte recieved[64];
-extern byte response[64];
-
-// in case long msg, require subdividing using cont packets
-extern byte expected_next_packet;
-extern int cont_data_len;
-extern int cont_data_offset;
-
-extern byte cont_recieved[1024];
-extern byte cont_response[1024];
-
-#include "packets.h"
-
 // ERROR HANDLING
 
-void respondErrorPDU(byte *buffer, int err);
+void respondErrorPDU(byte *buffer, int err) {
 
-void send_u2f_error(byte *buffer, int code);
+	SET_MSG_LEN(buffer, 2); //len("") + 2 byte SW
 
-void error_invalid_channel_id();
+	byte *datapart = buffer + 7;
 
-void error_timeout();
+	(*datapart++) = (err >> 8) & 0xff;
+	(*datapart++) =  err 	   & 0xff;
 
-void error_invalid_length();
+	RawHID.send(buffer, 100);
 
-void error_invalid_seq();
+}
 
-void error_channel_busy();
+void send_u2f_error(byte *buffer, int code) {
 
-void error_invalid_cmd();
+	memcpy(response, buffer, 4);
+
+  response[4] = U2FHID_ERROR;
+
+  SET_MSG_LEN(response, 1);
+
+  response[7] = code & 0xff;
+
+	DISPLAY_IF_DEBUG("u2f error:");
+	DISPLAY_IF_DEBUG(code);
+
+	RawHID.send(response, 100);
+}
+
+void error_invalid_channel_id() {
+	return send_u2f_error(recieved, ERR_SYNC_FAIL);
+}
+
+void error_timeout() {
+	return send_u2f_error(recieved, ERR_MSG_TIMEOUT);
+}
+
+void error_invalid_length() {
+	return send_u2f_error(recieved, ERR_INVALID_LEN);
+}
+
+void error_invalid_seq() {
+	return send_u2f_error(recieved, ERR_INVALID_SEQ);
+}
+
+void error_channel_busy() {
+	return send_u2f_error(recieved, ERR_CHANNEL_BUSY);
+}
+
+void error_invalid_cmd() {
+	return send_u2f_error(recieved, ERR_INVALID_CMD);
+}

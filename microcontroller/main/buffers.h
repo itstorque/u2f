@@ -1,8 +1,3 @@
-#ifndef BUFFERS_DEFINED
-#define BUFFERS_DEFINED
-
-#include "WProgram.h"
-
 #pragma mark - i/o buffers
 
 byte recieved[64];
@@ -15,5 +10,3 @@ int cont_data_offset;
 
 byte cont_recieved[1024];
 byte cont_response[1024];
-
-#endif
