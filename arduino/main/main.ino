@@ -1,38 +1,3 @@
-#include <src.h>
-#include <micro-ecc/uECC.h>
-// include arduino
-// language: cpp
-
-struct EncryptionKey K_wrap;
-
-struct EncryptionKey K_app;
-
-struct EncryptionKey Priv_attest;
-// Register: Given this command, the Security Key generates a fresh asymmet- ric key pair and returns the public key. The server associates this public key with a user account.
-void registerOrigin(RegistrationInput input)
-{
-    uECC_Curve curve = uECC_secp256r1();
-    KeyPair k = generateKeyPair(curve);
-    Origin o = input.origin;
-    Hash c = input.c;
-    Handle H = store(o, k.privateKey);
-}
-
-// create handle
-
-// store(origin, k_priv)
-// the private key and origin are encrypted via K_wrap
-// The handle is sent to the server and is stored there.
-byte store(byte origin, EncryptionKey k_priv)
-{
-    Encryptable origin_enc; // generate using origin
-    byte obscure_o = encrypt(K_app, origin_enc);
-    // interleave the obfuscated origin with the private key, encrypt it with K_wrap
-    // that is the plaintext
-    Encryptable plaintext;
-    Handle h = encrypt(K_wrap, plaintext);
-    return h;
-}
 
 // send attestations cert, batched
 // persistent memory lib
@@ -41,6 +6,8 @@ byte store(byte origin, EncryptionKey k_priv)
 // encryption libs
 #include "src/sha256/sha256.h"
 #include "src/uECC/uECC.h"
+
+// #include "src.h"
 
 // debug state
 #undef DEBUG
@@ -74,7 +41,12 @@ void debug_hex_loop(byte *data, int start, int end)
 
     for (int i = start; i < end; i++)
     {
+        if (data[i] <= 0xf)
+        {
+            Serial.print(0);
+        }
         Serial.print(data[i], HEX);
+        Serial.print(" ");
     }
     DISPLAY_IF_DEBUG("");
 }
@@ -314,6 +286,20 @@ typedef struct
         (*x++) = 0x00; \
     } while (0)
 
+#define ADD_SW_COND(x) \
+    do                 \
+    {                  \
+        (*x++) = 0x69; \
+        (*x++) = 0x85; \
+    } while (0)
+
+#define ADD_SW_WRONG_DATA(x) \
+    do                 \
+    {                  \
+        (*x++) = 0x6A; \
+        (*x++) = 0x80; \
+    } while (0)
+
 #pragma mark - i/o buffers
 
 byte recieved[64];
@@ -326,6 +312,11 @@ int cont_data_offset;
 
 byte cont_recieved[1024];
 byte cont_response[1024];
+
+uint32_t universal_counter = 0;
+
+// uECC_Curve curve = uECC_secp256r1();
+const struct uECC_Curve_t * curve = uECC_secp256r1(); //P-256
 
 #pragma mark - button setup
 
@@ -395,10 +386,7 @@ int RNG(uint8_t *dest, unsigned size)
 
     return 1;
 }
-#pragma mark - SHA-256 Setup
-
-#define SHA256_BLOCK_LENGTH 64
-#define SHA256_DIGEST_LENGTH 32
+#pragma mark - U2F Protocol
 
 typedef struct SHA256_HashContext
 {
@@ -425,6 +413,497 @@ void finish_SHA256(uECC_HashContext *base, uint8_t *hash_result)
     SHA256_HashContext *context = (SHA256_HashContext *)base;
     sha256_final(&context->ctx, hash_result);
 }
+
+struct EncryptionKey
+{
+    byte key[128];
+    uint8_t size;
+};
+
+struct KeyPair
+{
+    EncryptionKey publicKey;
+    EncryptionKey privateKey;
+};
+
+struct Handle
+{
+    int size;
+    byte *data; // data is app_hash + k_priv
+};
+
+struct Cert
+{
+    byte *data;
+    int size;
+};
+const char attestation_key[] = "\x2d\x2d\x2d\x2d\x2d\x42\x45\x47\x49\x4e\x20\x45\x43\x20\x50\x41\x52\x41\x4d\x45"
+"\x54\x45\x52\x53\x2d\x2d\x2d\x2d\x2d\x0a\x42\x67\x67\x71\x68\x6b\x6a\x4f\x50\x51"
+"\x4d\x42\x42\x77\x3d\x3d\x0a\x2d\x2d\x2d\x2d\x2d\x45\x4e\x44\x20\x45\x43\x20\x50"
+"\x41\x52\x41\x4d\x45\x54\x45\x52\x53\x2d\x2d\x2d\x2d\x2d\x0a\x2d\x2d\x2d\x2d\x2d"
+"\x42\x45\x47\x49\x4e\x20\x45\x43\x20\x50\x52\x49\x56\x41\x54\x45\x20\x4b\x45\x59"
+"\x2d\x2d\x2d\x2d\x2d\x0a\x4d\x48\x63\x43\x41\x51\x45\x45\x49\x4b\x55\x45\x49\x4a"
+"\x36\x74\x46\x32\x38\x4a\x4a\x63\x41\x4c\x57\x73\x4b\x76\x64\x47\x38\x4c\x37\x38"
+"\x61\x44\x2f\x6c\x45\x34\x55\x46\x39\x33\x5a\x50\x6f\x62\x69\x64\x5a\x43\x6f\x41"
+"\x6f\x47\x43\x43\x71\x47\x53\x4d\x34\x39\x0a\x41\x77\x45\x48\x6f\x55\x51\x44\x51"
+"\x67\x41\x45\x58\x2f\x31\x65\x4a\x74\x6b\x59\x62\x30\x64\x49\x4f\x31\x36\x37\x45"
+"\x4f\x42\x6a\x59\x31\x76\x49\x57\x66\x5a\x49\x48\x74\x36\x37\x45\x65\x67\x64\x50"
+"\x59\x4e\x4c\x64\x30\x38\x6a\x56\x43\x53\x35\x6b\x71\x6f\x46\x0a\x79\x5a\x69\x4f"
+"\x51\x47\x46\x44\x61\x61\x70\x7a\x69\x35\x48\x65\x50\x7a\x6a\x56\x5a\x76\x4a\x73"
+"\x47\x37\x43\x79\x31\x71\x6e\x6b\x79\x77\x3d\x3d\x0a\x2d\x2d\x2d\x2d\x2d\x45\x4e"
+"\x44\x20\x45\x43\x20\x50\x52\x49\x56\x41\x54\x45\x20\x4b\x45\x59\x2d\x2d\x2d\x2d"
+"\x2d\x0a";
+const char attestation_DER_cert[] = "\x30\x82\x01\x2b\x30\x81\xd3\x02\x09\x00\xc6\x29\x3d\x1a\xa8\x60\xb3\x9c\x30\x09"
+                                    "\x06\x07\x2a\x86\x48\xce\x3d\x04\x01\x30\x1e\x31\x1c\x30\x1a\x06\x09\x2a\x86\x48"
+                                    "\x86\xf7\x0d\x01\x09\x01\x16\x0d\x74\x61\x72\x65\x71\x40\x6d\x69\x74\x2e\x65\x64"
+                                    "\x75\x30\x20\x17\x0d\x32\x32\x30\x34\x31\x31\x32\x33\x31\x34\x32\x32\x5a\x18\x0f"
+                                    "\x32\x30\x37\x32\x30\x33\x32\x39\x32\x33\x31\x34\x32\x32\x5a\x30\x1e\x31\x1c\x30"
+                                    "\x1a\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x09\x01\x16\x0d\x74\x61\x72\x65\x71\x40"
+                                    "\x6d\x69\x74\x2e\x65\x64\x75\x30\x59\x30\x13\x06\x07\x2a\x86\x48\xce\x3d\x02\x01"
+                                    "\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07\x03\x42\x00\x04\x5f\xfd\x5e\x26\xd9\x18"
+                                    "\x6f\x47\x48\x3b\x5e\xbb\x10\xe0\x63\x63\x5b\xc8\x59\xf6\x48\x1e\xde\xbb\x11\xe8"
+                                    "\x1d\x3d\x83\x4b\x77\x4f\x23\x54\x24\xb9\x92\xaa\x05\xc9\x98\x8e\x40\x61\x43\x69"
+                                    "\xaa\x73\x8b\x91\xde\x3f\x38\xd5\x66\xf2\x6c\x1b\xb0\xb2\xd6\xa9\xe4\xcb\x30\x09"
+                                    "\x06\x07\x2a\x86\x48\xce\x3d\x04\x01\x03\x48\x00\x30\x45\x02\x21\x00\x8b\xc3\xd3"
+                                    "\x03\x88\x26\x7f\x73\xbf\x93\xd6\x74\xa6\xe9\xcc\x54\x2a\x6d\x07\xcb\x2c\x52\x75"
+                                    "\x61\x99\xb8\xd2\x2d\xd8\x02\xa0\xbd\x02\x20\x06\xf2\xef\x7a\x43\xb5\x90\x0d\xd0"
+                                    "\x53\x3a\xf0\x20\x74\xff\x33\x84\xf0\xca\x74\xd0\xdc\x15\xdc\x1a\x55\xf1\xe5\xde"
+                                    "\x30\x1c\x28";
+
+void get_certificate(struct Cert *cert)
+{
+    // write a random certificate in X.509 DER format
+
+    byte *cert_data;
+    int cert_data_len;
+
+    cert_data_len = sizeof(attestation_DER_cert);
+    cert_data = (byte *)malloc(cert_data_len);
+
+    // write certificate
+    memcpy(cert_data, attestation_DER_cert, cert_data_len);
+
+    cert->data = cert_data;
+    cert->size = cert_data_len;
+    return;
+}
+
+const char handlekey[] = "owo_uWu_OwO_uwu_UwU";
+void store(byte *app_hash, int hash_len, struct EncryptionKey k_priv,struct Handle *h)
+{
+    // TODO: improve
+    byte *data;
+    int data_len;
+    // copy the app_hash and k_priv into data
+    data_len = hash_len + k_priv.size;
+    data = (byte *)malloc(data_len);
+    DISPLAY_IF_DEBUG("store: hash_len");
+    DISPLAY_IF_DEBUG(hash_len);
+    DISPLAY_IF_DEBUG("\n");
+
+    DISPLAY_IF_DEBUG("store: k_priv.size");
+    DISPLAY_IF_DEBUG(k_priv.size);
+    DISPLAY_IF_DEBUG("\n");
+
+
+    memcpy(data, app_hash, hash_len);
+    memcpy(data + hash_len, k_priv.key, k_priv.size);
+
+    // encrypt data with key using xor
+    byte *encrypted_data;
+    int encrypted_data_len;
+    encrypted_data_len = data_len;
+    encrypted_data = (byte *)malloc(encrypted_data_len);
+
+    for (int i = 0; i < data_len; i++)
+    {
+        encrypted_data[i] = data[i] ^ handlekey[i % (sizeof(handlekey)-1)];
+    }
+
+    // write into handle
+    h->size = data_len;
+    h->data = encrypted_data;
+}
+
+int retrieve(byte *app_hash, byte*buffer,struct Handle h ,struct EncryptionKey*k_priv)
+{
+    // TODO: improve using encryption
+    // get k_priv from handle
+    byte *data;
+    // int data_len;
+    // data_len = h.size;
+    data = (byte *)malloc(h.size);
+
+    memcpy(data, h.data, h.size);
+
+    // decrypt data with key using xor
+    byte *decrypted_data;
+    // int decrypted_data_len;
+    // decrypted_data_len = data_len;
+    decrypted_data = (byte *)malloc(h.size);
+
+    for (int i = 0; i < h.size; i++)
+    {
+        decrypted_data[i] = data[i] ^ handlekey[i % (sizeof(handlekey) - 1)];
+    }
+
+    memcpy(k_priv->key, decrypted_data + 32, k_priv->size);
+
+
+    if (memcmp(decrypted_data, app_hash, 32) != 0)
+    {
+        DISPLAY_IF_DEBUG("check_handle: priv_k is not a valid private key");
+        DISPLAY_IF_DEBUG("\n");
+        // reply with  Response Message: Error: Invalid Handle
+        byte*end = cont_response;
+        ADD_SW_WRONG_DATA(end);
+        send_response_cont(buffer, 2);
+
+        return 0 ;
+    }
+    DISPLAY_IF_DEBUG("check_handle: priv_k is a valid private key");
+    DISPLAY_IF_DEBUG("\n");
+
+    return 1;
+
+    // memcpy(k_priv->key, h.data + hash_len, k_priv->size);
+
+}
+struct KeyPair generateKeyPair(uECC_Curve curve)
+{
+    KeyPair k;
+    uECC_make_key(k.publicKey.key, k.privateKey.key, curve);
+    k.publicKey.size = uECC_curve_public_key_size(curve);
+    k.privateKey.size = uECC_curve_private_key_size(curve);
+    return k;
+}
+
+uint8_t private_k[36]; //32
+uint8_t public_k[68]; //64
+byte handle[64];
+byte sha256_hash[32];
+
+
+void append_cert(byte* signature,int*packet_length){
+
+	//convert signature format
+	//http://bitcoin.stackexchange.com/questions/12554/why-the-signature-is-always-65-13232-bytes-long
+
+	cont_response[(*packet_length)++] = 0x30; //header: compound structure
+
+	uint8_t *total_len = &cont_response[*packet_length];
+	
+    cont_response[*packet_length] = 0x44; //total length (32 + 32 + 2 + 2)
+    *packet_length += 1;
+
+	cont_response[(*packet_length)++] = 0x02;  //header: integer
+
+
+	if (signature[0]>0x7f) {
+   	cont_response[(*packet_length)++] = 33;  //33 byte
+		cont_response[(*packet_length)++] = 0;
+		(*total_len)++; //update total length
+	}  else {
+		cont_response[(*packet_length)++] = 32;  //32 byte
+	}
+
+
+	memcpy(cont_response+*packet_length, signature, 32); //R value
+	*packet_length +=32;
+	cont_response[(*packet_length)++] = 0x02;  //header: integer
+
+	if (signature[32]>0x7f) {
+
+		cont_response[(*packet_length)++] = 33;  //32 byte
+		cont_response[(*packet_length)++] = 0;
+
+		(*total_len)++;	//update total length
+
+	} else {
+
+		cont_response[(*packet_length)++] = 32;  //32 byte
+
+	}
+
+
+	memcpy(cont_response+*packet_length, signature+32, 32); //R value
+	*packet_length +=32;
+    DISPLAY_IF_DEBUG("FINISHED APPENDING SIGN");
+    return;
+}
+
+void *register_origin(byte *message, int size, int*out_size)
+{
+
+
+    // signature must be 2*curve_size long
+    byte *signature;
+    Cert cert;
+    Handle h;
+    // uECC_Curve curve = uECC_secp256r1();
+    KeyPair kp = generateKeyPair(curve);
+    h.size = 64;
+
+    byte* challange = message; 
+    byte *application = challange + 32;
+
+    DISPLAY_IF_DEBUG("challange:");
+    debug_dump_hex(challange, 32);
+    DISPLAY_IF_DEBUG("application:");
+    debug_dump_hex(application, 32);
+    // generating signature
+
+    signature = (byte *)malloc(2 * uECC_curve_private_key_size(curve));
+
+    // generate handle
+
+    store(application, 32, kp.privateKey, &h); // TODO: this is also an importannt part, reimplement with encryption
+
+    int data_to_sign_len = 1 + 32 + 32 + h.size + kp.publicKey.size;
+    byte *data_to_sign;
+    data_to_sign = (byte *)malloc(data_to_sign_len);
+
+    if (data_to_sign == NULL)
+    {
+        DISPLAY_IF_DEBUG("register_origin: malloc failed");
+        return;
+    }
+
+    // copy zero in the first place TODO: this is the importatnt part, this actually gets encrpyted
+    byte* actual_p_key = (byte *)malloc(kp.publicKey.size+1);
+    actual_p_key[0] = 0x04;
+    memcpy(actual_p_key+1, kp.publicKey.key, kp.publicKey.size);
+    char zero = '\0';
+    memccpy(data_to_sign, &zero, 0, 1);
+    memcpy(data_to_sign + 1, application, 32);
+    memcpy(data_to_sign + 33, challange, 32);
+    memcpy(data_to_sign + 65, h.data, h.size);
+    memcpy(data_to_sign + 65 + h.size, actual_p_key, kp.publicKey.size+1);
+    // memcpy(data_to_sign + 65 + h.size, kp.publicKey.key, kp.publicKey.size);
+
+    SHA256_CTX ctx;
+
+    byte hash[32];
+
+    sha256_init(&ctx);
+    sha256_update(&ctx, data_to_sign, data_to_sign_len);
+    sha256_final(&ctx, hash);
+
+    free(data_to_sign);
+
+    uECC_sign(kp.privateKey.key, hash, 32, signature, curve);
+
+    // generating cert
+
+    // get_certificate(&cert);
+
+    // generate response = byte + actual public key + handle len + handle + certificate + signature
+    
+    int packet_length = 0;
+    *cont_response = 0x05;
+    packet_length++;
+    memcpy(cont_response + 1,actual_p_key, 65);
+    packet_length += 65;
+    *(cont_response + 66) = h.size;
+    packet_length++;
+    memcpy(cont_response + 67, h.data, h.size);
+    packet_length += h.size;
+
+    memcpy(cont_response+packet_length, attestation_DER_cert, sizeof(attestation_DER_cert));
+
+	packet_length += sizeof(attestation_DER_cert)-1;
+
+
+    append_cert(signature,&packet_length);
+
+    DISPLAY_IF_DEBUG("handle:");
+    DISPLAY_IF_DEBUG(h.size);
+    debug_dump_hex(h.data, h.size);
+
+
+
+    free(signature);
+
+    *out_size = packet_length;
+}
+// ref: https://fidoalliance.org/specs/fido-u2f-v1.0-ps-20141009/fido-u2f-raw-message-formats-ps-20141009.pdf
+// message size distribution : 1,32,32,1,L
+// control byte, challenge, application, handle len L, handle
+void authenticate_origin(byte*buffer,byte *message, int size, int*out_size)
+{
+    
+    byte* challange = message;
+    byte* application = challange + 32;
+    byte* handle_len = application + 32;
+    byte* handle = handle_len + 1;
+
+    DISPLAY_IF_DEBUG("challange:");
+    debug_dump_hex(challange, 32);
+    DISPLAY_IF_DEBUG("\n");
+    DISPLAY_IF_DEBUG("application:");
+    debug_dump_hex(application, 32);
+    DISPLAY_IF_DEBUG("\n");
+    DISPLAY_IF_DEBUG("handle_len:");
+    debug_dump_hex(handle_len, 1);
+    DISPLAY_IF_DEBUG("\n");
+    DISPLAY_IF_DEBUG("handle:");
+    debug_dump_hex(handle, *handle_len);
+    DISPLAY_IF_DEBUG("\n");
+
+    // byte*endof = cont_response;
+    // ADD_SW_WRONG_DATA(endof);
+    // send_response_cont(buffer, 2);
+    // return;
+
+    // // if (*CB == 0x07)
+    // {
+    //     DISPLAY_IF_DEBUG("authenticate_origin: CB = 0x07");
+    //     // reply with  Response Message: Error: Test­of­User­Presence Required
+    //     byte*end = cont_response;
+    //     ADD_SW_COND(end);
+    //     send_response_cont(buffer, 2);
+    //     return;
+
+    // }
+
+
+    Handle h;
+    h.data = handle;
+    h.size = *handle_len;
+
+    EncryptionKey k_priv;
+    k_priv.size = uECC_curve_private_key_size(curve);
+    if (retrieve(application, buffer, h,&k_priv)==0){
+        DISPLAY_IF_DEBUG("authenticate_origin: retrieve failed");
+        return;
+    }
+
+
+    // response size = 1 + 4 + X
+    // response = user_presence + user_presence_counter + signature
+    // the signature is of : application + user_presence + user_presence_counter + challange
+
+    byte user_presence = 0x01; // TODO: change this to a button press
+    uint32_t user_presence_counter = universal_counter++;
+
+    byte *signature;
+    signature = (byte *)malloc(1 + 4 + 2 * uECC_curve_private_key_size(curve));
+
+    int data_to_sign_len = 32 + 1 + 4 + 32;
+    byte *data_to_sign;
+    data_to_sign = (byte *)malloc(data_to_sign_len);
+
+    // byte* response = (byte *)malloc(1 + 4 + 2 * uECC_curve_private_key_size(curve));
+    if (data_to_sign == NULL)
+    {
+        DISPLAY_IF_DEBUG("authenticate_origin: malloc failed");
+        return;
+    }
+    // construct data to sign
+    memcpy(data_to_sign, application, 32);
+    memcpy(data_to_sign + 32, &user_presence, 1);
+    memcpy(data_to_sign + 33, &user_presence_counter, 4);
+    memcpy(data_to_sign + 37, challange, 32);
+
+
+    SHA256_CTX ctx;
+
+    byte hash[32];
+
+    sha256_init(&ctx);
+    sha256_update(&ctx, data_to_sign, data_to_sign_len);
+    sha256_final(&ctx, hash);
+
+    free(data_to_sign);
+
+    uECC_sign(k_priv.key, hash, 32, signature, curve);
+
+    // generate response
+    int packet_length = 0;
+    memcpy(cont_response, &user_presence, 1);
+    packet_length++;
+    memcpy(cont_response + 1, &user_presence_counter, 4);
+    packet_length += 4;
+
+    append_cert(signature, &packet_length);
+
+    //memcpy(cont_response + 5, signature, 2 * uECC_curve_private_key_size(curve));
+
+    free(signature);
+
+
+    DISPLAY_IF_DEBUG("authenticate_origin: response:");
+    DISPLAY_IF_DEBUG(packet_length);
+    debug_dump_hex(cont_response, packet_length);
+
+    DISPLAY_IF_DEBUG("SENDING RESPONSE");
+    byte*end = cont_response + packet_length;
+    ADD_SW_OK(end);
+    packet_length += 2;
+    send_response_cont(buffer,packet_length );
+    return;
+    // return response;
+}
+
+void check_handle(byte*buffer,byte *message, int size, int*out_size){
+    byte* application = message+32;
+    
+    byte *handle_len = message + 32 + 32;
+    byte *handle = *handle_len + 1;
+
+    DISPLAY_IF_DEBUG("check_handle: handle_len:");
+    debug_dump_hex(handle_len, 1);
+    DISPLAY_IF_DEBUG("\n");
+
+    DISPLAY_IF_DEBUG("check_handle: handle:");
+    debug_dump_hex(handle, *handle_len);
+    DISPLAY_IF_DEBUG("\n");
+
+    // decode handle using handlekey
+
+    for (int i = 0; i < *handle_len; i++)
+    {
+        handle[i] ^= handlekey[i % (sizeof(handlekey)-1)];
+    }
+
+    byte * h_app = handle;
+
+    DISPLAY_IF_DEBUG("check_handle: h_app:");
+    debug_dump_hex(h_app, 32);
+    DISPLAY_IF_DEBUG("\n");
+
+    // check if priv_k is a valid private key
+    // by comparing the application parameter
+
+    if (memcmp(h_app, application, 32) != 0)
+    {
+        DISPLAY_IF_DEBUG("check_handle: priv_k is not a valid private key");
+        DISPLAY_IF_DEBUG("\n");
+        // reply with  Response Message: Error: Invalid Handle
+        byte*end = cont_response;
+        ADD_SW_WRONG_DATA(end);
+        send_response_cont(buffer, 2);
+
+        return;
+    } else {
+        DISPLAY_IF_DEBUG("check_handle: priv_k is a valid private key");
+        DISPLAY_IF_DEBUG("\n");
+
+        // reply with  Response Message: TEST OF USER PRESENCE REQUIRED (this means success)
+        byte*end = cont_response;
+        ADD_SW_COND(end);
+        send_response_cont(buffer, 2);
+        return; 
+    }
+
+
+}
+
+
+#pragma mark - SHA-256 Setup
+
+#define SHA256_BLOCK_LENGTH 64
+#define SHA256_DIGEST_LENGTH 32
 
 void setup()
 {
@@ -559,8 +1038,8 @@ void process_packet(byte *buffer)
     if (cmd == U2FHID_MSG)
         process_message(buffer);
 
-    if (cmd == U2FHID_MSG)
-        process_message(buffer);
+    // if (cmd == U2FHID_MSG) //. TODO: @torq 
+    //     process_message(buffer);
 }
 
 void process_message(byte *buffer)
@@ -589,21 +1068,63 @@ void process_message(byte *buffer)
 
     byte PAYLOAD = message[2];
 
+    // byte PAYLOAD2 = message[3];
+
     int reqlength = (message[4] << 16) | (message[5] << 8) | message[6];
+
+    byte *data = &message[7];
+
+    DISPLAY_IF_DEBUG("INST:");
+    DISPLAY_HEX_IF_DEBUG(INST);
 
     switch (INST)
     {
 
     case U2F_REGISTER:
     {
-        register_origin(PAYLOAD, reqlength);
-        // TODO: implement register
+        DISPLAY_IF_DEBUG("U2F_REGISTER");
+        int size;
+        register_origin(data, reqlength,&size);
+        DISPLAY_IF_DEBUG("SENDING RESPONSE");
+        
+        byte*end = cont_response + size;
+        ADD_SW_OK(end);
+        size +=2;
+        send_response_cont(buffer, size);
+        return;
     }
     break;
 
     case U2F_AUTHENTICATE:
     {
+        DISPLAY_IF_DEBUG("U2F_AUTHENTICATE");
+        // if cb == 07 authenticate handle
+        // if cb == 03 authenticate origin
+        byte cb = PAYLOAD;
+        if (cb == U2F_AUTH_CHECK_ONLY)
+        {
+            // message:error:test­of­user­presence­required (note that despite the name this signals a success condition).
+            // If the key handle was not created by this U2F token, or if it was created for a different application 
+            //parameter, the token MUST respond with an authentication response message:error:bad­key­handle.
+            int size;
+            DISPLAY_IF_DEBUG("U2F_AUTHENTICATE_HANDLE");  
+            check_handle(buffer,data, reqlength, &size);
+            return;
 
+
+        }
+        else if (cb == U2F_AUTH_ENFORCE)
+        {
+        int size;
+            DISPLAY_IF_DEBUG("U2F_AUTHENTICATE_ORIGIN");
+            authenticate_origin(buffer,data, reqlength, &size);
+        }
+        else
+        {
+            DISPLAY_IF_DEBUG("U2F_AUTHENTICATE_UNKNOWN");
+            respondErrorPDU(buffer, SW_INS_NOT_SUPPORTED);
+            return;
+        }
         // TODO: implement authenticate
     }
     break;
@@ -1018,7 +1539,7 @@ void loop()
             else
             {
 
-                memcpy(cont_recieved + cont_data_offset + 7, cont_data_offset + 5, MAX_PACKET_LENGTH_CONT);
+                memcpy(cont_recieved + cont_data_offset + 7, recieved + 5, MAX_PACKET_LENGTH_CONT);
 
                 cont_data_offset += MAX_PACKET_LENGTH_CONT;
 
@@ -1075,4 +1596,145 @@ void loop()
             }
         }
     }
+}
+
+
+
+
+void working_register(byte*message, int*out_size){
+    	byte *challenge = message;
+	byte *app_param = message+32;
+
+	memset(public_k, 0, sizeof(public_k));
+	memset(private_k, 0, sizeof(private_k));
+
+	uECC_make_key(public_k + 1, private_k, curve); //so we ca insert 0x04
+
+	public_k[0] = 0x04;
+
+	DISPLAY_IF_DEBUG("PUBLIC KEY");
+	debug_hex_loop(public_k, 0, sizeof(public_k));
+	DISPLAY_IF_DEBUG("\nPRIV KEY");
+	debug_hex_loop(private_k, 0, sizeof(private_k));
+	DISPLAY_IF_DEBUG("\n\n");
+
+	//construct hash
+	memcpy(handle, app_param, 32);
+	memcpy(handle+32, private_k, 32);
+
+	for (int i =0; i < 64; i++) {
+		handle[i] ^= handlekey[i % (sizeof(handlekey)-1)];
+	}
+
+	SHA256_CTX ctx;
+	sha256_init(&ctx);
+
+	cont_response[0] = 0x00;
+
+	sha256_update(&ctx, cont_response, 1);
+
+	DISPLAY_IF_DEBUG("APP_PARAM");
+	debug_hex_loop(app_param, 0, 32);
+	DISPLAY_IF_DEBUG("\n");
+
+	sha256_update(&ctx, app_param, 32);
+
+	DISPLAY_IF_DEBUG("CHALLENGE");
+	debug_hex_loop(challenge, 0, 32);
+	DISPLAY_IF_DEBUG("\n");
+
+	sha256_update(&ctx, challenge, 32);
+
+	DISPLAY_IF_DEBUG("HANDLE");
+	debug_hex_loop(handle, 0, 64);
+	DISPLAY_IF_DEBUG("\n");
+
+	sha256_update(&ctx, handle, 64);
+
+	sha256_update(&ctx, public_k, 65);
+
+	DISPLAY_IF_DEBUG("PUBLIC KEY");
+	debug_hex_loop(public_k, 0, 65);
+	DISPLAY_IF_DEBUG("\n");
+
+	sha256_final(&ctx, sha256_hash);
+
+	DISPLAY_IF_DEBUG("HASH");
+	debug_hex_loop(sha256_hash, 0, 32);
+	DISPLAY_IF_DEBUG("\n");
+
+	uint8_t *signature = response;
+
+	uint8_t tmp[32 + 32 + 64];
+	SHA256_HashContext ectx = {{&init_SHA256, &update_SHA256, &finish_SHA256, 64, 32, tmp}};
+
+    DISPLAY_IF_DEBUG("here 0");
+	uECC_sign_deterministic((uint8_t *) attestation_key,
+																			sha256_hash,
+																			32,
+																			&ectx.uECC,
+																			signature,
+																			curve);
+
+    DISPLAY_IF_DEBUG("here 1");
+	int packet_length = 0;
+
+	cont_response[packet_length++] = 0x05;
+
+	memcpy(cont_response + packet_length, public_k, 65);
+
+	packet_length += 65;
+
+	cont_response[packet_length++] = 64; //length of handle
+
+	memcpy(cont_response+packet_length, handle, 64);
+
+	packet_length += 64;
+
+    append_cert(signature, &packet_length);
+    
+    
+    /*
+	memcpy(cont_response+packet_length, attestation_DER_cert, sizeof(attestation_DER_cert));
+
+	packet_length += sizeof(attestation_DER_cert)-1;
+    DISPLAY_IF_DEBUG("here 2");
+
+	//convert signature format
+	//http://bitcoin.stackexchange.com/questions/12554/why-the-signature-is-always-65-13232-bytes-long
+
+	cont_response[packet_length++] = 0x30; //header: compound structure
+	uint8_t *total_len = &cont_response[packet_length];
+	cont_response[packet_length++] = 0x44; //total length (32 + 32 + 2 + 2)
+	cont_response[packet_length++] = 0x02;  //header: integer
+
+	if (signature[0]>0x7f) {
+   	cont_response[packet_length++] = 33;  //33 byte
+		cont_response[packet_length++] = 0;
+		(*total_len)++; //update total length
+	}  else {
+		cont_response[packet_length++] = 32;  //32 byte
+	}
+
+	memcpy(cont_response+packet_length, signature, 32); //R value
+	packet_length +=32;
+	cont_response[packet_length++] = 0x02;  //header: integer
+
+	if (signature[32]>0x7f) {
+
+		cont_response[packet_length++] = 33;  //32 byte
+		cont_response[packet_length++] = 0;
+
+		(*total_len)++;	//update total length
+
+	} else {
+
+		cont_response[packet_length++] = 32;  //32 byte
+
+	}
+
+	memcpy(cont_response+packet_length, signature+32, 32); //R value
+	packet_length +=32;
+    */
+    *out_size = packet_length;
 }
