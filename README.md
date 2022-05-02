@@ -54,6 +54,8 @@ might need to use `mEcc` package (https://github.com/kmackay/micro-ecc) for `ECD
 
 [2] Reference code for U2F specifications. Google, 2022. Accessed: Apr. 02, 2022. [Online]. Available: https://github.com/google/u2f-ref-code
 
+[3] [Google webauthn demo](https://docs.google.com/document/d/1-_zXFtWkRYx2XOF4xijzzV4cAvrsmwzrACuTsANheX8/edit#heading=h.y6jpxdlc0l4q)
+
 ## Other potentially helpful links
 
 ### Interfacing with USB through the web

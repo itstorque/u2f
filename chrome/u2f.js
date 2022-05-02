@@ -162,3 +162,26 @@ function sendAuthenticationChallengeToSecurityKey(origin, H_k, challenge, channe
 }
 
 // browser sends counter, signature(clientdata_hash, counter), and clientdata to server
+// server returns a cookie
+function sendAuthenticationResponseToServer(counter, signature, clientdata) {
+    return new Promise(function (resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'http://localhost:3000/authentication');
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                resolve(xhr.response);
+            } else {
+                reject(xhr.statusText);
+            }
+        };
+        xhr.onerror = function () {
+            reject(xhr.statusText);
+        };
+        xhr.send(JSON.stringify({
+            counter: counter,
+            signature: signature,
+            clientdata: clientdata
+        }));
+    });
+}
