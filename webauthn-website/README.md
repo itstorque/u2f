@@ -5,7 +5,7 @@ Users register with a username and one of the supported authenticators.
 Login process requires matching username and authenticator pair.
 
 ## Demo link:
-https://web-auth-n-demo.herokuapp.com/
+https://u2f-858.herokuapp.com/
 
 ## Installation
 ### Requirements
@@ -15,7 +15,7 @@ https://web-auth-n-demo.herokuapp.com/
   - Clone this repo ` git clone https://github.com/tonijukica/webauthn.git`
   - Run `npm install` in cloned repo.
   - Configure environment variables in `.env` file, use `.env.example` as guide. MongoDB connection is required for the app to run.
-  If the app is run locally then it's not necessary to provide RP Id(Relaying Party ID) as it defaults to localhost, else you must provide RP Id to match your origin e.g.`RP_ID=https://web-auth-n-demo.herokuapp.com/`  
+  If the app is run locally then it's not necessary to provide RP Id(Relaying Party ID) as it defaults to localhost, else you must provide RP Id to match your origin e.g.`RP_ID=web-auth-n-demo.herokuapp.com`  
 ## Launch
 ### Development
   - Client: `npm run dev:client`
@@ -32,5 +32,3 @@ https://web-auth-n-demo.herokuapp.com/
 ### License
   - MIT
   
-  
- Implemented following Ackermann Yuriy examples.

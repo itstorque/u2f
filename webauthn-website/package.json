@@ -6,14 +6,15 @@
   "scripts": {
     "dev:client": "webpack-dev-server --mode development --devtool inline-source-map --hot",
     "dev:server": "nodemon server/index.js",
+    "heroku-prebuild": "npm install --dev",
     "build": "webpack --mode production",
-    "start": "npm run build && node server/index.js"
+    "start": "node server/index.js"
   },
   "engines": {
-    "node": ">=12.0.0 <17.5.0"
+    "node": ">=12.0.0 <15.0.0"
   },
   "keywords": [],
-  "author": "Toni Jukica",
+  "author": "Ashika Verma",
   "license": "MIT",
   "dependencies": {
     "@lapo/asn1js": "^1.1.0",
