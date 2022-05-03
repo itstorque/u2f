@@ -26,9 +26,7 @@ void u2f_version(byte* buffer, int reqlength) {
 
 void store(byte *app_hash, int hash_len, struct EncryptionKey k_priv,struct Handle *h)
 {
-    return;
-    // TODO: improve
-    byte *data;
+        byte *data;
     int data_len;
     // copy the app_hash and k_priv into data
     data_len = hash_len + k_priv.size;
@@ -63,7 +61,6 @@ void store(byte *app_hash, int hash_len, struct EncryptionKey k_priv,struct Hand
 
 int retrieve(byte *app_hash, byte*buffer,struct Handle h ,struct EncryptionKey*k_priv)
 {
-    return 0;
     // TODO: improve using encryption
     // get k_priv from handle
     byte *data;
@@ -102,14 +99,10 @@ int retrieve(byte *app_hash, byte*buffer,struct Handle h ,struct EncryptionKey*k
     DISPLAY_IF_DEBUG("\n");
 
     return 1;
-
-    // memcpy(k_priv->key, h.data + hash_len, k_priv->size);
-
 }
 
-void append_cert(byte* signature,int*packet_length){
+void append_signature(byte* signature,int*packet_length){
 
-    return;
 
 	//convert signature format
 	//http://bitcoin.stackexchange.com/questions/12554/why-the-signature-is-always-65-13232-bytes-long
@@ -128,7 +121,9 @@ void append_cert(byte* signature,int*packet_length){
    	cont_response[(*packet_length)++] = 33;  //33 byte
 		cont_response[(*packet_length)++] = 0;
 		(*total_len)++; //update total length
+        DISPLAY_IF_DEBUG("append_sign: signature[0]>0x7f");
 	}  else {
+        DISPLAY_IF_DEBUG("append_sign: signature[0]<=0x7f");
 		cont_response[(*packet_length)++] = 32;  //32 byte
 	}
 
@@ -138,14 +133,14 @@ void append_cert(byte* signature,int*packet_length){
 	cont_response[(*packet_length)++] = 0x02;  //header: integer
 
 	if (signature[32]>0x7f) {
-
+        DISPLAY_IF_DEBUG("append_sign: signature[32]>0x7f");
 		cont_response[(*packet_length)++] = 33;  //32 byte
 		cont_response[(*packet_length)++] = 0;
 
 		(*total_len)++;	//update total length
 
 	} else {
-
+        DISPLAY_IF_DEBUG("append_sign: signature[32]<=0x7f");
 		cont_response[(*packet_length)++] = 32;  //32 byte
 
 	}
@@ -155,14 +150,13 @@ void append_cert(byte* signature,int*packet_length){
 	*packet_length +=32;
     DISPLAY_IF_DEBUG("FINISHED APPENDING SIGN");
     return;
+	
 }
 
 void *register_origin(byte *message, int size, int*out_size)
 {
 
-
     // signature must be 2*curve_size long
-    byte *signature;
     Cert cert;
     Handle h;
     // uECC_Curve curve = uECC_secp256r1();
@@ -176,53 +170,40 @@ void *register_origin(byte *message, int size, int*out_size)
     debug_dump_hex(challange, 32);
     DISPLAY_IF_DEBUG("application:");
     debug_dump_hex(application, 32);
-    // generating signature
-
-    signature = (byte *)malloc(2 * uECC_curve_private_key_size(curve));
-
-    // generate handle
 
     store(application, 32, kp.privateKey, &h); // TODO: this is also an importannt part, reimplement with encryption
 
-    int data_to_sign_len = 1 + 32 + 32 + h.size + kp.publicKey.size;
-    byte *data_to_sign;
-    data_to_sign = (byte *)malloc(data_to_sign_len);
-
-    if (data_to_sign == NULL)
-    {
-        DISPLAY_IF_DEBUG("register_origin: malloc failed");
-        return;
-    }
-
-    // copy zero in the first place TODO: this is the importatnt part, this actually gets encrpyted
+ // copy zero in the first place TODO: this is the importatnt part, this actually gets encrpyted
     byte* actual_p_key = (byte *)malloc(kp.publicKey.size+1);
     actual_p_key[0] = 0x04;
     memcpy(actual_p_key+1, kp.publicKey.key, kp.publicKey.size);
     char zero = '\0';
-    memccpy(data_to_sign, &zero, 0, 1);
-    memcpy(data_to_sign + 1, application, 32);
-    memcpy(data_to_sign + 33, challange, 32);
-    memcpy(data_to_sign + 65, h.data, h.size);
-    memcpy(data_to_sign + 65 + h.size, actual_p_key, kp.publicKey.size+1);
-    // memcpy(data_to_sign + 65 + h.size, kp.publicKey.key, kp.publicKey.size);
 
     SHA256_CTX ctx;
 
-    byte hash[32];
 
     sha256_init(&ctx);
-    sha256_update(&ctx, data_to_sign, data_to_sign_len);
-    sha256_final(&ctx, hash);
+    sha256_update(&ctx, &zero, 1);
+    sha256_update(&ctx, application, 32);
+    sha256_update(&ctx, challange, 32);
+    sha256_update(&ctx, h.data, h.size);
+    sha256_update(&ctx, actual_p_key, kp.publicKey.size+1);
+    // sha256_update(&ctx, data_to_sign, data_to_sign_len);
+    sha256_final(&ctx, sha256_hash);
 
-    free(data_to_sign);
 
-    uECC_sign(kp.privateKey.key, hash, 32, signature, curve);
+    byte *signature = (byte *)malloc(2*uECC_curve_private_key_size(curve));
+	uint8_t tmp[32 + 32 + 64];
+	SHA256_HashContext ectx = {{&init_SHA256, &update_SHA256, &finish_SHA256, 64, 32, tmp}};
 
-    // generating cert
+    DISPLAY_IF_DEBUG("deterministic sign");
+	uECC_sign_deterministic((uint8_t *) attestation_key,
+                                    sha256_hash,
+                                    32,
+                                    &ectx.uECC,
+                                    signature,
+                                    curve);
 
-    // get_certificate(&cert);
-
-    // generate response = byte + actual public key + handle len + handle + certificate + signature
     
     int packet_length = 0;
     *cont_response = 0x05;
@@ -238,26 +219,34 @@ void *register_origin(byte *message, int size, int*out_size)
 
 	packet_length += sizeof(attestation_DER_cert)-1;
 
+    DISPLAY_IF_DEBUG("signature:");
+    debug_dump_hex(signature, 2 * uECC_curve_private_key_size(curve));
+    DISPLAY_IF_DEBUG("\n");
 
-    append_cert(signature,&packet_length);
+    append_sign(signature,&packet_length);
+
 
     DISPLAY_IF_DEBUG("handle:");
     DISPLAY_IF_DEBUG(h.size);
     debug_dump_hex(h.data, h.size);
+    DISPLAY_IF_DEBUG("\n");
 
 
 
-    free(signature);
+    //free(signature);
 
-    *out_size = packet_length;
+    byte*end = cont_response + packet_length;
+    ADD_SW_OK(end);
+    packet_length +=2;
+    send_response_cont(buffer, packet_length);
+   
 }
 // ref: https://fidoalliance.org/specs/fido-u2f-v1.0-ps-20141009/fido-u2f-raw-message-formats-ps-20141009.pdf
 // message size distribution : 1,32,32,1,L
 // control byte, challenge, application, handle len L, handle
 void authenticate_origin(byte*buffer,byte *message, int size, int*out_size)
 {
-    
-    byte* challange = message;
+   byte* challange = message;
     byte* application = challange + 32;
     byte* handle_len = application + 32;
     byte* handle = handle_len + 1;
@@ -285,11 +274,7 @@ void authenticate_origin(byte*buffer,byte *message, int size, int*out_size)
     //     DISPLAY_IF_DEBUG("authenticate_origin: CB = 0x07");
     //     // reply with  Response Message: Error: Test­of­User­Presence Required
     //     byte*end = cont_response;
-    //     ADD_SW_COND(end);
-    //     send_response_cont(buffer, 2);
-    //     return;
-
-    // }
+    //     ADD_SW_COND(en
 
 
     Handle h;
@@ -302,46 +287,35 @@ void authenticate_origin(byte*buffer,byte *message, int size, int*out_size)
         DISPLAY_IF_DEBUG("authenticate_origin: retrieve failed");
         return;
     }
-
-
-    // response size = 1 + 4 + X
-    // response = user_presence + user_presence_counter + signature
-    // the signature is of : application + user_presence + user_presence_counter + challange
-
     byte user_presence = 0x01; // TODO: change this to a button press
     uint32_t user_presence_counter = universal_counter++;
 
-    byte *signature;
-    signature = (byte *)malloc(1 + 4 + 2 * uECC_curve_private_key_size(curve));
-
-    int data_to_sign_len = 32 + 1 + 4 + 32;
-    byte *data_to_sign;
-    data_to_sign = (byte *)malloc(data_to_sign_len);
-
-    // byte* response = (byte *)malloc(1 + 4 + 2 * uECC_curve_private_key_size(curve));
-    if (data_to_sign == NULL)
-    {
-        DISPLAY_IF_DEBUG("authenticate_origin: malloc failed");
-        return;
-    }
-    // construct data to sign
-    memcpy(data_to_sign, application, 32);
-    memcpy(data_to_sign + 32, &user_presence, 1);
-    memcpy(data_to_sign + 33, &user_presence_counter, 4);
-    memcpy(data_to_sign + 37, challange, 32);
-
-
+    uint8_t *signature = response;
     SHA256_CTX ctx;
 
     byte hash[32];
 
     sha256_init(&ctx);
-    sha256_update(&ctx, data_to_sign, data_to_sign_len);
-    sha256_final(&ctx, hash);
+    sha256_update(&ctx, application, 32);
+    sha256_update(&ctx, &user_presence, 1);
+    sha256_update(&ctx, (byte*)&user_presence_counter, 4);
+    sha256_update(&ctx, challange, 32);
 
-    free(data_to_sign);
 
-    uECC_sign(k_priv.key, hash, 32, signature, curve);
+
+    sha256_final(&ctx, sha256_hash);
+
+
+	uint8_t tmp[32 + 32 + 64];
+	SHA256_HashContext ectx = {{&init_SHA256, &update_SHA256, &finish_SHA256, 64, 32, tmp}};
+
+    DISPLAY_IF_DEBUG("deterministic sign");
+	uECC_sign_deterministic((uint8_t *) k_priv.key,
+                                        sha256_hash,
+                                        32,
+                                        &ectx.uECC,
+                                        signature,
+                                        curve);
 
     // generate response
     int packet_length = 0;
@@ -350,11 +324,14 @@ void authenticate_origin(byte*buffer,byte *message, int size, int*out_size)
     memcpy(cont_response + 1, &user_presence_counter, 4);
     packet_length += 4;
 
-    append_cert(signature, &packet_length);
+    DISPLAY_IF_DEBUG("signature:");
+    debug_dump_hex(signature, 1 + 4 + 2 * uECC_curve_private_key_size(curve));
+    DISPLAY_IF_DEBUG("\n");
+
+    append_sign(signature, &packet_length);
 
     //memcpy(cont_response + 5, signature, 2 * uECC_curve_private_key_size(curve));
 
-    free(signature);
 
 
     DISPLAY_IF_DEBUG("authenticate_origin: response:");
@@ -367,26 +344,25 @@ void authenticate_origin(byte*buffer,byte *message, int size, int*out_size)
     packet_length += 2;
     send_response_cont(buffer,packet_length );
     return;
-    // return response;
 }
 
 void check_handle(byte*buffer,byte *message, int size, int*out_size){
-    byte* application = message+32;
+ byte* application = message+32;
     
-    byte *handle_len = message + 32 + 32;
-    byte *handle = *handle_len + 1;
+    byte handle_len = *(message + 32 + 32);
+    byte *handle = message + 32 + 32 + 1;
 
     DISPLAY_IF_DEBUG("check_handle: handle_len:");
-    debug_dump_hex(handle_len, 1);
+    DISPLAY_IF_DEBUG(handle_len);
     DISPLAY_IF_DEBUG("\n");
 
     DISPLAY_IF_DEBUG("check_handle: handle:");
-    debug_dump_hex(handle, *handle_len);
+    debug_dump_hex(handle, handle_len);
     DISPLAY_IF_DEBUG("\n");
 
     // decode handle using handlekey
 
-    for (int i = 0; i < *handle_len; i++)
+    for (int i = 0; i < handle_len; i++)
     {
         handle[i] ^= handlekey[i % (sizeof(handlekey)-1)];
     }
