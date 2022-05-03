@@ -112,8 +112,15 @@ U2F test pages:
 - Message headers: https://fidoalliance.org/specs/fido-u2f-v1.2-ps-20170411/inc/u2f.h
 - SW Command status responses: [ISO-7816]()
 
+## Website Notes!
+
+We used webauthn! yay! Check out the website at https://u2f-858.herokuapp.com/
+To run it locally, go into the webauthn-website directory and follow the README in that folder.
+
 ## References
 
 [1] J. Lang, A. Czeskis, D. Balfanz, M. Schilder, and S. Srinivas, “Security Keys: Practical Cryptographic Second Factors for the Modern Web,” in Financial Cryptography and Data Security, vol. 9603, J. Grossklags and B. Preneel, Eds. Berlin, Heidelberg: Springer Berlin Heidelberg, 2017, pp. 422–440. doi: 10.1007/978-3-662-54970-4_25. Available: https://css.csail.mit.edu/6.858/2022/readings/u2f-fc.pdf
 
 [2] Reference code for U2F specifications. Google, 2022. Accessed: Apr. 02, 2022. [Online]. Available: https://github.com/google/u2f-ref-code
+
+[3] TODO format this shit: https://github.com/tonijukica/webauthn.git
