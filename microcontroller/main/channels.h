@@ -1,7 +1,4 @@
-#ifndef CHANNEL_SETUP
-#define CHANNEL_SETUP
-
-// CHANNELS
+#pragma mark - managing communication channel
 
 #define CHANNEL_COUNT 4
 
@@ -15,4 +12,4 @@ struct CHANNEL_STATUS {
 	int last_millis;
 };
 
-#endif
+CHANNEL_STATUS channel_status[CHANNEL_COUNT];

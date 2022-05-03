@@ -1,9 +1,22 @@
-#include <stdint.h>
-#include "WProgram.h"
+#pragma mark - packet helpers
 
-#ifndef PACKETS_DEFINED
-#define PACKETS_DEFINED
+// PACKETS ARE DEFINED AS INITIAL AND CONTINUATION WHERE
 
+// INIT PACKET:
+// 4 for channel id
+// 1 for command identifier
+// 1 for BCNTH
+// 1 for BCNTL
+// 57 for payload
+
+// CONT PACKET:
+// 4 for channel id
+// 1 for packet sequence
+// 59 for payload
+
+// we can calculate this from max packet size of 64 bytes for
+// full-speed devices, so payload size is at max
+// 64 - 7 + 128 * (64 - 5) = 7609 bytes.
 #define MAX_PACKET_LENGTH 7609
 
 // initial packet size is 64 - 7
@@ -13,6 +26,7 @@
 #define MAX_PACKET_LENGTH_CONT 59
 
 #define IS_CONTINUATION_PACKET(x) ( (x) < 0x80)
+#define IS_NOT_CONTINUATION_PACKET(x) ( (x) >= 0x80)
 
 #define SET_MSG_LEN(b, v) do { \
 	(b)[5] = ((v) >> 8) & 0xff;  (b)[6] = (v) & 0xff; \
@@ -125,4 +139,59 @@
 	#define ERR_SYNC_FAIL           0x0b    // SYNC command failed
 	#define ERR_OTHER               0x7f    // Other unspecified error
 
-#endif
+#pragma mark - u2f raw message format header from
+// https://fidoalliance.org/specs/fido-u2f-v1.2-ps-20170411/inc/u2f.h
+// TODO: move into a separate header file too
+
+	// U2F native commands
+
+	#define U2F_REGISTER            0x01    // Registration command
+	#define U2F_AUTHENTICATE        0x02    // Authenticate/sign command
+	#define U2F_VERSION             0x03    // Read version string command
+
+	#define U2F_VENDOR_FIRST        0x40    // First vendor defined command
+	#define U2F_VENDOR_LAST         0xbf    // Last vendor defined command
+
+	// U2F_CMD_REGISTER command defines
+
+	#define U2F_REGISTER_ID         0x05    // Version 2 registration identifier
+	#define U2F_REGISTER_HASH_ID    0x00    // Version 2 hash identintifier
+
+	// Authentication control byte
+
+	#define U2F_AUTH_ENFORCE        0x03    // Enforce user presence and sign
+	#define U2F_AUTH_CHECK_ONLY     0x07    // Check only
+	#define U2F_AUTH_FLAG_TUP       0x01    // Test of user presence set
+
+	// Command status responses
+
+	#define U2F_SW_NO_ERROR                 0x9000 // SW_NO_ERROR
+	#define U2F_SW_WRONG_DATA               0x6A80 // SW_WRONG_DATA
+	#define U2F_SW_CONDITIONS_NOT_SATISFIED 0x6985 // SW_CONDITIONS_NOT_SATISFIED
+	#define U2F_SW_COMMAND_NOT_ALLOWED      0x6986 // SW_COMMAND_NOT_ALLOWED
+	#define U2F_SW_INS_NOT_SUPPORTED        0x6D00 // SW_INS_NOT_SUPPORTED
+
+#pragma mark - Command status responses
+// Sourced from ISO-7816
+	#define SW_NO_ERROR                       0x9000
+	#define SW_CONDITIONS_NOT_SATISFIED       0x6985
+	#define SW_WRONG_DATA                     0x6A80
+	#define SW_WRONG_LENGTH                   0x6700
+	#define SW_INS_NOT_SUPPORTED              0x6D00
+	#define SW_CLA_NOT_SUPPORTED              0x6E00
+
+#define ADD_SW_OK(x) do { (*x++)=0x90; (*x++)=0x00;} while (0)
+
+#define ADD_SW_COND(x) \
+    do                 \
+    {                  \
+        (*x++) = 0x69; \
+        (*x++) = 0x85; \
+    } while (0)
+
+#define ADD_SW_WRONG_DATA(x) \
+    do                 \
+    {                  \
+        (*x++) = 0x6A; \
+        (*x++) = 0x80; \
+    } while (0)
