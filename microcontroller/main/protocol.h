@@ -34,6 +34,10 @@ void u2f_version(byte *buffer, int reqlength)
 void register_origin(byte*buffer,byte *message, int size)
 {
 
+    byte user_presence = confirm_user_presence(); 
+
+    if (user_presence != 0x01) return;
+
     // signature must be 2*curve_size long
     Handle h;
     // uECC_Curve curve = uECC_secp256r1();
@@ -164,7 +168,10 @@ void authenticate_origin(byte *buffer, byte *message, int size, int *out_size)
         DISPLAY_IF_DEBUG("authenticate_origin: retrieve failed");
         return;
     }
-    byte user_presence = 0x01; // TODO: change this to a button press
+    byte user_presence = confirm_user_presence(); 
+
+    if (user_presence != 0x01) return;
+
     uint32_t user_presence_counter = universal_counter++;
 
     uint8_t *signature = response;
