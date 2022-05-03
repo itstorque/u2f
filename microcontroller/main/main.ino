@@ -42,9 +42,6 @@ void setup() {
 
 }
 
-// TODO: use EEPROM (counter.h methods) instead of this variable
-int universal_counter = 0;
-
 #include "protocol.h"
 
 #include "message_processing.h"

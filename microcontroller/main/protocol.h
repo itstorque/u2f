@@ -172,7 +172,14 @@ void authenticate_origin(byte *buffer, byte *message, int size, int *out_size)
 
     if (user_presence != 0x01) return;
 
+    int universal_counter = getCounter();
+
     uint32_t user_presence_counter = universal_counter++;
+
+    setCounter(universal_counter);
+
+    DISPLAY_IF_DEBUG(">>>>>>>>>>>>> COUNTER");
+    DISPLAY_IF_DEBUG(universal_counter);
 
     uint8_t *signature = response;
     SHA256_CTX ctx;

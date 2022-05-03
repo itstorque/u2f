@@ -8,15 +8,11 @@ byte confirm_user_presence() {
 
   while (true) {
 
-    DISPLAY_IF_DEBUG("USER PRESENCE LOOP");
-
     buttonState = digitalRead(BUTTON_PIN);
-
-    DISPLAY_IF_DEBUG(buttonState);
 
     if (buttonState == HIGH) return 0x01;
 
-    // if (millis() - time > 5000) break;
+    if (millis() - time > 5000) break;
 
   }
 
