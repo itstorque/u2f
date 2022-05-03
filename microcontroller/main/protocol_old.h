@@ -3,6 +3,130 @@
 // defined in communication.h
 void send_response_cont(byte *request, int packet_length);
 
+void protocol_authenticate(byte *buffer, byte *message, int reqlength, byte PAYLOAD) {
+	// test implementation of u2f authenticate for debugging
+
+
+
+
+
+
+      if (reqlength!=(64+1+64)) {
+        respondErrorPDU(buffer, SW_WRONG_LENGTH);
+        return;
+      }
+
+      byte *payload = message + 7;
+      byte *challenge_parameter = payload;
+      byte *application_parameter = payload+32;
+      byte handle_len = payload[64];
+      byte *client_handle = payload+65;
+
+      if (handle_len!=64) {
+        //not from this device
+        respondErrorPDU(buffer, SW_WRONG_DATA);
+        return;
+      }
+
+      memcpy(handle, client_handle, 64);
+      for (int i =0; i < 64; i++) {
+        handle[i] ^= handlekey[i%(sizeof(handlekey)-1)];
+      }
+      uint8_t *key = handle + 32;
+
+      if (memcmp(handle, application_parameter, 32)!=0) {
+        //this handle is not from us
+        respondErrorPDU(buffer, SW_WRONG_DATA);
+        return;
+      }
+
+      if (PAYLOAD==0x07) { //check-only
+        respondErrorPDU(buffer, SW_CONDITIONS_NOT_SATISFIED);
+
+      } else if (PAYLOAD==0x03) { //enforce-user-presence-and-sign
+        int counter = getCounter();
+        SHA256_CTX ctx;
+        sha256_init(&ctx);
+        sha256_update(&ctx, application_parameter, 32);
+        cont_response[0] = 0x01; // user_presence
+
+        int ctr = ((counter>>24)&0xff) | // move byte 3 to byte 0
+          ((counter<<8)&0xff0000) | // move byte 1 to byte 2
+          ((counter>>8)&0xff00) | // move byte 2 to byte 1
+          ((counter<<24)&0xff000000); // byte 0 to byte 3
+
+        memcpy(cont_response + 1, &ctr, 4);
+
+        sha256_update(&ctx, cont_response, 5); //user presence + ctr
+
+        sha256_update(&ctx, challenge_parameter, 32);
+        sha256_final(&ctx, sha256_hash);
+
+        uint8_t *signature = response; //temporary // TODO: I THINK??
+
+        uint8_t tmp[32 + 32 + 64];
+        SHA256_HashContext ectx = {{&init_SHA256, &update_SHA256, &finish_SHA256, 64, 32, tmp}};
+
+        uECC_sign_deterministic((uint8_t *)key,
+              sha256_hash,
+              32,
+              &ectx.uECC,
+              signature,
+              curve);
+
+        int len = 5;
+
+        //convert signature format
+        //http://bitcoin.stackexchange.com/questions/12554/why-the-signature-is-always-65-13232-bytes-long
+        cont_response[len++] = 0x30; //header: compound structure
+        uint8_t *total_len = &cont_response[len];
+        cont_response[len++] = 0x44; //total length (32 + 32 + 2 + 2)
+        cont_response[len++] = 0x02;  //header: integer
+
+        if (signature[0]>0x7f) {
+             cont_response[len++] = 33;  //33 byte
+           cont_response[len++] = 0;
+           (*total_len)++; //update total length
+        } else {
+           cont_response[len++] = 32;  //32 byte
+        }
+
+        memcpy(cont_response+len, signature, 32); //R value
+        len +=32;
+        cont_response[len++] = 0x02;  //header: integer
+
+        if (signature[32]>0x7f) {
+            cont_response[len++] = 33;  //32 byte
+            cont_response[len++] = 0;
+            (*total_len)++; //update total length
+        } else {
+            cont_response[len++] = 32;  //32 byte
+        }
+
+        memcpy(cont_response+len, signature+32, 32); //R value
+        len +=32;
+        byte *last = cont_response+len;
+        ADD_SW_OK(last);
+        len += 2;
+
+        send_response_cont(buffer, len);
+
+        setCounter(counter+1);
+
+      } else {
+
+				// ERROR
+
+      }
+
+
+
+
+
+
+
+}
+
 void protocol_register(byte *buffer, byte *message, int reqlength) {
 	// test implementation of u2f register for debugging
 
@@ -303,4 +427,58 @@ void authenticate_origin(byte*buffer,byte *message, int size, int*out_size)
     send_response_cont(buffer, size);
     return;
     // return response;
+}
+
+void check_handle(byte*buffer,byte *message, int size, int*out_size){
+    byte* application = message+32;
+    
+    byte *handle_len = message + 32 + 32;
+    byte *handle = *handle_len + 1;
+
+    DISPLAY_IF_DEBUG("check_handle: handle_len:");
+    debug_dump_hex(handle_len, 1);
+    DISPLAY_IF_DEBUG("\n");
+
+    DISPLAY_IF_DEBUG("check_handle: handle:");
+    debug_dump_hex(handle, *handle_len);
+    DISPLAY_IF_DEBUG("\n");
+
+    // decode handle using handlekey
+
+    for (int i = 0; i < *handle_len; i++)
+    {
+        handle[i] ^= handlekey[i % (sizeof(handlekey)-1)];
+    }
+
+    byte * h_app = handle;
+
+    DISPLAY_IF_DEBUG("check_handle: h_app:");
+    debug_dump_hex(h_app, 32);
+    DISPLAY_IF_DEBUG("\n");
+
+    // check if priv_k is a valid private key
+    // by comparing the application parameter
+
+    if (memcmp(h_app, application, 32) != 0)
+    {
+        DISPLAY_IF_DEBUG("check_handle: priv_k is not a valid private key");
+        DISPLAY_IF_DEBUG("\n");
+        // reply with  Response Message: Error: Invalid Handle
+        byte*end = cont_response;
+        ADD_SW_WRONG_DATA(end);
+        send_response_cont(buffer, 2);
+
+        return;
+    } else {
+        DISPLAY_IF_DEBUG("check_handle: priv_k is a valid private key");
+        DISPLAY_IF_DEBUG("\n");
+
+        // reply with  Response Message: TEST OF USER PRESENCE REQUIRED (this means success)
+        byte*end = cont_response;
+        ADD_SW_COND(end);
+        send_response_cont(buffer, 2);
+        return; 
+    }
+
+
 }

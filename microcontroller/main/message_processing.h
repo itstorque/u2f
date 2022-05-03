@@ -33,48 +33,52 @@ void process_message(byte *buffer) {
 
 		case U2F_REGISTER: {
 
-			DISPLAY_IF_DEBUG("U2F_REGISTER");
-			int size;
-			register_origin(data, reqlength, &size);
-			DISPLAY_IF_DEBUG("SENDING RESPONSE");
+			return protocol_register(buffer, message, reqlength);
+
+			// DISPLAY_IF_DEBUG("U2F_REGISTER");
+			// int size;
+			// register_origin(data, reqlength, &size);
+			// DISPLAY_IF_DEBUG("SENDING RESPONSE");
 			
-			byte *end = cont_response + size;
-			ADD_SW_OK(end);
-			size +=2;
-			send_response_cont(buffer, size);
-			return;
+			// byte *end = cont_response + size;
+			// ADD_SW_OK(end);
+			// size +=2;
+			// send_response_cont(buffer, size);
+			// return;
 
 		} break;
 
 		case U2F_AUTHENTICATE: {
-			DISPLAY_IF_DEBUG("U2F_AUTHENTICATE");
-			// if cb == 07 authenticate handle
-			// if cb == 03 authenticate origin
-			byte cb = PAYLOAD;
-			if (cb == U2F_AUTH_CHECK_ONLY)
-			{
-				// message:error:test­of­user­presence­required (note that despite the name this signals a success condition).
-				// If the key handle was not created by this U2F token, or if it was created for a different application 
-				//parameter, the token MUST respond with an authentication response message:error:bad­key­handle.
-				int size;
-				DISPLAY_IF_DEBUG("U2F_AUTHENTICATE_HANDLE");  
-				check_handle(buffer, data, reqlength, &size);
-				return;
+			// DISPLAY_IF_DEBUG("U2F_AUTHENTICATE");
+			// // if cb == 07 authenticate handle
+			// // if cb == 03 authenticate origin
+			// byte cb = PAYLOAD;
+			// if (cb == U2F_AUTH_CHECK_ONLY)
+			// {
+			// 	// message:error:test­of­user­presence­required (note that despite the name this signals a success condition).
+			// 	// If the key handle was not created by this U2F token, or if it was created for a different application 
+			// 	//parameter, the token MUST respond with an authentication response message:error:bad­key­handle.
+			// 	int size;
+			// 	DISPLAY_IF_DEBUG("U2F_AUTHENTICATE_HANDLE");  
+			// 	check_handle(buffer, data, reqlength, &size);
+			// 	return;
 
 
-			}
-			else if (cb == U2F_AUTH_ENFORCE)
-			{
-			int size;
-				DISPLAY_IF_DEBUG("U2F_AUTHENTICATE_ORIGIN");
-				authenticate_origin(buffer,data, reqlength, &size);
-			}
-			else
-			{
-				DISPLAY_IF_DEBUG("U2F_AUTHENTICATE_UNKNOWN");
-				respondErrorPDU(buffer, SW_INS_NOT_SUPPORTED);
-				return;
-			}
+			// }
+			// else if (cb == U2F_AUTH_ENFORCE)
+			// {
+			// int size;
+			// 	DISPLAY_IF_DEBUG("U2F_AUTHENTICATE_ORIGIN");
+			// 	authenticate_origin(buffer,data, reqlength, &size);
+			// }
+			// else
+			// {
+			// 	DISPLAY_IF_DEBUG("U2F_AUTHENTICATE_UNKNOWN");
+			// 	respondErrorPDU(buffer, SW_INS_NOT_SUPPORTED);
+			// 	return;
+			// }
+
+			return protocol_authenticate(buffer, message, reqlength, PAYLOAD);
 
 		} break;
 
