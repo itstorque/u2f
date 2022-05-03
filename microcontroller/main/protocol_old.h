@@ -48,7 +48,7 @@ void protocol_authenticate(byte *buffer, byte *message, int reqlength, byte PAYL
         SHA256_CTX ctx;
         sha256_init(&ctx);
         sha256_update(&ctx, application_parameter, 32);
-        cont_response[0] = 0x01; // user_presence
+        cont_response[0] = confirm_user_presence(); // user_presence
 
         int ctr = ((counter>>24)&0xff) | // move byte 3 to byte 0
           ((counter<<8)&0xff0000) | // move byte 1 to byte 2
@@ -371,7 +371,7 @@ void authenticate_origin(byte*buffer,byte *message, int size, int*out_size)
     // response = user_presence + user_presence_counter + signature
     // the signature is of : application + user_presence + user_presence_counter + challange
 
-    byte user_presence = 0x01; // TODO: change this to a button press
+    byte user_presence = cont_response[0] = confirm_user_presence(); // TODO: change this to a button press
     uint32_t user_presence_counter = universal_counter++;
 
     byte *signature;
