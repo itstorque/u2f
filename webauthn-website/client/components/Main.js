@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Grid, Button, Message, Form, Segment, Header } from 'semantic-ui-react';
 import { getGetAssertionChallenge, getMakeCredentialsChallenge, sendWebAuthnResponse, getProfile, logout, registerFail } from './webauthn';
 import { preformatGetAssertReq, preformatMakeCredReq, publicKeyCredentialToJSON } from '../helpers';
+import { Link } from 'react-router-dom';
+import Footer from './Footer';
 
 function Main() {
 	const [errMsg, setErrMsg] = useState('');
@@ -188,6 +190,7 @@ function Main() {
 					}
 				</Grid.Column>
 			</Grid>
+			<Footer />
 		</div>
 	);
 }

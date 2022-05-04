@@ -13,7 +13,7 @@ app.use(express.json({}));
 app.use(cookieSession({
 	name: 'seesion',
 	keys: [randomHex32String()],
-	maxAge: 24*60*60*1000
+	maxAge: 24 * 60 * 60 * 1000
 }));
 
 app.use(cookieParser());
@@ -28,7 +28,9 @@ app.get('/', (req, res) => {
 	res.send('Express server is up and running');
 });
 
+
 app.use('/webauthn', userRouter);
+
 const port = process.env.PORT || 8080;
 
 app.listen(port, () => {
