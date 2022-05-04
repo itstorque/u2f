@@ -9,6 +9,7 @@ module.exports = {
 	output: {
 		path: path.join(__dirname, 'dist'),
 		filename: 'bundle.js',
+		publicPath: '/',
 	},
 	module: {
 		rules: [
@@ -35,8 +36,9 @@ module.exports = {
 	devServer: {
 		port: 3000,
 		open: true,
+		historyApiFallback: true,
 		proxy: {
-			'/webauthn': 'http://localhost:'+serverPort,
+			'/webauthn': 'http://localhost:' + serverPort,
 		},
 	},
 	plugins: [
