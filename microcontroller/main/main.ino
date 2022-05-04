@@ -29,6 +29,8 @@
 
 #include "encryption.h"
 
+#include "button.h"
+
 void setup() {
 
 	Serial.begin(9600);
@@ -36,13 +38,11 @@ void setup() {
 
 	Serial.println("U2F");
 
+	pinMode(BUTTON_PIN, INPUT);
+
 }
 
-// TODO: use EEPROM (counter.h methods) instead of this variable
-int universal_counter = 0;
-
-// #include "protocol.h"
-#include "protocol_old.h"
+#include "protocol.h"
 
 #include "message_processing.h"
 
