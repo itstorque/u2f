@@ -1,6 +1,8 @@
 import axios from 'axios';
 axios.defaults.withCredentials = true;
 
+// ---------------------- Webauthn ----------------------
+
 function getMakeCredentialsChallenge(formBody) {
 	return axios.post('webauthn/register', formBody)
 		.then(response => {
@@ -41,11 +43,20 @@ function registerFail(body) {
 	return axios.post('webauthn/registerfail', body)
 		.then(response => response.data);
 }
+
+// ---------------------- DB Display ----------------------
+function getAllUsers() {
+	return axios.get('/webauthn/users')
+		.then(response => response.data);
+}
+
+
 export {
 	getGetAssertionChallenge,
 	getMakeCredentialsChallenge,
 	sendWebAuthnResponse,
 	getProfile,
 	logout,
-	registerFail
+	registerFail,
+	getAllUsers
 };
