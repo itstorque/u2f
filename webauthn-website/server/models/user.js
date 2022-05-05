@@ -20,6 +20,10 @@ const User = mongoose.model(
 			type: Boolean,
 			default: false,
 		},
+		counter: {
+			type: Number,
+			default: -1,
+		}
 	})
 );
 

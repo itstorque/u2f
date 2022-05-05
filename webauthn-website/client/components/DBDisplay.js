@@ -29,6 +29,7 @@ function DBDisplay() {
 						<Table.HeaderCell>ID</Table.HeaderCell>
 						<Table.HeaderCell>Name</Table.HeaderCell>
 						<Table.HeaderCell>Email</Table.HeaderCell>
+						<Table.HeaderCell>Counter</Table.HeaderCell>
 						<Table.HeaderCell>Public Key</Table.HeaderCell>
 					</Table.Row>
 				</Table.Header>
@@ -40,6 +41,7 @@ function DBDisplay() {
 							<Table.Cell>{user.id}</Table.Cell>
 							<Table.Cell>{user.name}</Table.Cell>
 							<Table.Cell>{user.email}</Table.Cell>
+							<Table.Cell>{user.counter>0? user.counter: 'reregister to see counter'}</Table.Cell>
 							<Table.Cell>{user.authenticators[0].publicKey}</Table.Cell>
 						</Table.Row>
 					))}
