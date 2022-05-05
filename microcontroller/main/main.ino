@@ -4,8 +4,8 @@
 // encryption libs
 #include "src/sha256/sha256.h"
 #include "src/uECC/uECC.h"
-#include "src/crypto/src/Crypto.h"
-#include "src/crypto/src/AES.h"
+// #include "src/crypto/src/Crypto.h"
+#include "src/crypto/AES.h"
 
 // debug state
 #undef DEBUG

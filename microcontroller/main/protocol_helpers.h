@@ -10,7 +10,7 @@ void encrypt(byte* key, byte*plaintext, byte*ciphertext, bool is32bytes = true)
 
     aes128.clear();
     aes128.setKey(key, aes128.keySize());
-    crypto_feed_watchdog();
+//    crypto_feed_watchdog();
 
     byte plaintext_chunks[numChunks][16];
     byte ciphertext_chunks[numChunks][16];
@@ -37,7 +37,7 @@ void decrypt(byte* key,  byte*ciphertext, byte*plaintext, bool is32bytes = true)
 
     aes128.clear();
     aes128.setKey(key, aes128.keySize());
-    crypto_feed_watchdog();
+//    crypto_feed_watchdog();
 
     byte ciphertext_chunks[numChunks][16];
     byte plaintext_chunks[numChunks][16];

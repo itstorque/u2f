@@ -1,6 +1,6 @@
 void testCipher()
 {
-    crypto_feed_watchdog();
+//    crypto_feed_watchdog();
     Serial.print(" Encryption ... ");
     
     // create a 16 byte key

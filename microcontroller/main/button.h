@@ -1,4 +1,4 @@
-#define BUTTON_PIN 20
+#define BUTTON_PIN 19
 
 byte confirm_user_presence() {
 
