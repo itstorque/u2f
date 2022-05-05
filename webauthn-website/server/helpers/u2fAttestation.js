@@ -20,8 +20,8 @@ async function verifyU2FAttestation(ctapCredentialResponse, clientDataJSON) {
 
 	const PEMCertificate = ASN1toPEM(ctapCredentialResponse.attStmt.x5c[0]);
 	const signature = ctapCredentialResponse.attStmt.sig;
-	// const verified = await verifySignature(signature, signatureBase, PEMCertificate);
-	const verified = true;
+	const verified = await verifySignature(signature, signatureBase, PEMCertificate);
+	// const verified = true;
 	return {
 		verified,
 		authrInfo: {

@@ -119,6 +119,10 @@ router.post('/response', async (req, res) => {
 	}
 	if (result.verified) {
 		req.session.loggedIn = true;
+		// update user counter in db
+		console.log(result.authrInfo.counter);
+		
+
 		return res.json({ 'status': 'ok' });
 	} else {
 		return res.json({

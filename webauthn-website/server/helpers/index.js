@@ -4,9 +4,6 @@ const base64url = require('base64url');
 const cbor = require('cbor');
 const verifyU2FAttestation = require('./u2fAttestation');
 const verifyPackedAttestation = require('./packedAttestation');
-const verifyAndroidKeyAttestation = require('./androidKeyAttestation');
-const verifyAndroidSafetyNetAttestation = require('./androidSafetyNetAttestation');
-const noneAttestation = require('./noneAttestation');
 
 async function verifySignature(signature, data, publicKey) {
 	return await crypto.createVerify('SHA256').update(data).verify(publicKey, signature);
@@ -133,16 +130,11 @@ async function verifyAuthenticatorAttestationResponse(webAuthnResponse) {
 	const ctapMakeCredResp = cbor.decodeAllSync(attestationBuffer)[0];
 	const { clientDataJSON } = webAuthnResponse.response;
 	let verification;
+	console.log(ctapMakeCredResp.fmt);
 	if (ctapMakeCredResp.fmt === 'fido-u2f')
 		verification = await verifyU2FAttestation(ctapMakeCredResp, clientDataJSON);
 	else if (ctapMakeCredResp.fmt === 'packed')
 		verification = await verifyPackedAttestation(ctapMakeCredResp, clientDataJSON);
-	else if (ctapMakeCredResp.fmt === 'android-key')
-		verification = await verifyAndroidKeyAttestation(ctapMakeCredResp, clientDataJSON);
-	else if (ctapMakeCredResp.fmt === 'android-safetynet')
-		verification = await verifyAndroidSafetyNetAttestation(ctapMakeCredResp, clientDataJSON);
-	else if (ctapMakeCredResp.fmt === 'none')
-		verification = await noneAttestation(ctapMakeCredResp, clientDataJSON);
 
 	const { verified, authrInfo } = verification;
 	if (verified) {

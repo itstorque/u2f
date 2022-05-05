@@ -190,7 +190,6 @@ function Main() {
 					}
 				</Grid.Column>
 			</Grid>
-			<Footer />
 		</div>
 	);
 }
