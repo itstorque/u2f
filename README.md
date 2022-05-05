@@ -1,6 +1,8 @@
-# u2f
+# FIDO 2 U2F Protocol
 
-u2f dongle implementation for MIT's 6.858 - Spring 2022
+U2F dongle implementation created for and tested on a teensy 3.2 with the addition of a button.
+
+![doc/hardware_key.png](doc/hardware_key.jpeg)
 
 ## Project Structure
 
@@ -15,78 +17,88 @@ u2f dongle implementation for MIT's 6.858 - Spring 2022
 
 ### Microcontroller Directory
 
-- [`channels.h`](microcontroller/main/channels.h):
+- [`buffers.h`](microcontroller/main/buffers.h):
+Data buffers used to recieve and send data
+
+- [`button.h`](microcontroller/main/button.h):
+Code for user presence confirmation with button
+
+- [`channels.h`](microcontroller/main/channel_manager.h):
 Definitions that help with channel management
 
-- [`communication.h`](microcontroller/main/communication.h) and 
-[`communication.cpp`](microcontroller/main/communication.cpp):
+- [`channels.h`](microcontroller/main/channels.h):
+Structs and definitions for channels
+
+- [`communication.h`](microcontroller/main/communication.h):
 Main module that controls HID communication between microcontroller and browser.
+
+- [`counter.h`](microcontroller/main/counter.h):
+EEPROM counter code
 
 - [`debug.h`](microcontroller/main/debug.h):
 Macros that help debugging
 
-- [`encryption.h`](microcontroller/main/encryption.h) and 
-[`encryption.cpp`](microcontroller/main/encryption.cpp):
+- [`encryption.h`](microcontroller/main/encryption.h):
 Main setup for encryption libs and RNG functions
 
-- [`error_handling.h`](microcontroller/main/error_handling.h) and 
-[`error_handling.cpp`](microcontroller/main/error_handling.cpp):
+- [`error_handling.h`](microcontroller/main/error_handling.h):
 Communicating errors within the u2f and sw implementations
 
-- [`global_buffers.h`](microcontroller/main/global_buffers.h):
-Global data buffers used to recieve and send data
-
 - [`keys.h`](microcontroller/main/keys.h):
-Key storage. Ideally move to a secure element
-
-- [`main.h`](microcontroller/main/main.h):
-Header that manages all the imports and sets up extern globals
+Key storage. Ideally this would live on a secure element
 
 - [`main.ino`](microcontroller/main/main.ino):
 Run at start up. Manage and respond to HID communication
 
-- [`message_headers.h`](microcontroller/main/message_headers.h):
-Message headers for u2f and sw protocols
+- [`message_processing.h`](microcontroller/main/message_processing.h):
+Message processing for u2f and sw protocols
 
-- [`packets.h`](microcontroller/main/packets.h) and 
-[`packets.cpp`](microcontroller/main/packets.cpp):
+- [`packets.h`](microcontroller/main/packets.h):
 Main packet manager that follows u2f spec on packets
 
-- [`protocol.h`](microcontroller/main/protocol.h) and 
-[`protocol.cpp`](microcontroller/main/protocol.cpp):
+- [`protocol_helpers.h`](microcontroller/main/protocol_helpers.h):
+Helpers for `protocol.h`
+
+- [`protocol.h`](microcontroller/main/protocol.h):
 U2F protocol implementation
+
+- [`test.h`](microcontroller/main/test.h):
+Test functions for encrypt and decrypt
 
 
 ## Implementation
 
 ![doc/security_key_flow_diagram.png](doc/security_key_flow_diagram.png)
 
-For communication protocol, look at
+For communication protocol, look at [4], [5], [6].
 
+- https://fidoalliance.org/specs/fido-u2f-v1.2-ps-20170411/fido-u2f-raw-message-formats-v1.2-ps-20170411.html#registration-request-message---u2f_register
 - https://fidoalliance.org/specs/u2f-specs-master/fido-u2f-hid-protocol.html#:~:text=With%20a%20packet%20size%20of,%2D%205)%20%3D%207609%20bytes
 - https://fidoalliance.org/specs/fido-v2.0-id-20180227/fido-client-to-authenticator-protocol-v2.0-id-20180227.html
 
-## Getting Started
-To set up the submodule, run:
-```
-git submodule init
-git submodule update --init --recursive
-```
-
-## Microcontroller notes
+## Microcontroller
 
 Our current implementation is developed and tested on the Teensy 3.2. The hardware limitations
 are requiring RawHID and EEPROM/persistent storage.
 
-Need to upgrade USB version to 2.1 by modifying `#define USB_VERSION 0x200` to `#define USB_VERSION 0x210` in `/Applications/Arduino.app/Contents/Java/hardware/arduino/avr/cores/arduino/USBCore.h`.
+Advised to upgrade USB version to 2.1 by modifying `#define USB_VERSION 0x200` to `#define USB_VERSION 0x210` in 
+`/Applications/Arduino.app/Contents/Java/hardware/arduino/avr/cores/arduino/USBCore.h`.
 
-We will be using RawHID to communicate. Run the [helpers/setup_hid_iface.sh](helpers/setup_hid_iface.sh)
+We use RawHID to communicate. Run the [helpers/setup_hid_iface.sh](helpers/setup_hid_iface.sh)
 [Teensyduino location]
-to setup the teensyduino core lib USB headers. For reference check out 
-[helpers/teensy3_core_usb_desc.h](helpers/teensy3_core_usb_desc.h), 
-namely `RAWHID_USAGE_PAGE` and `RAWHID_USAGE`.
+to setup the teensyduino core lib USB headers. The section `USB_RAWHID` in
+ `Teensyduino.app/Contents/Java/hardware/teensy/avr/cores/teensy3/usb_desc.h`
+ should redefine the following:
+ ```C
+   #define RAWHID_USAGE_PAGE  0xf1d0
+  #define RAWHID_USAGE  0x01
+  ```
+You can reference
+[helpers/teensy3_core_usb_desc.h](helpers/teensy3_core_usb_desc.h) to see what it should look like.
 
-### Useful for debugging hardware
+We use a button in pull down configuration on pin `19` on a teensy 3.2, this can be changed in `microcontroller/main/button.h`.
+
+### Useful for debugging hardware connected to chrome
 
 Chrome pages:
 
@@ -94,7 +106,10 @@ Chrome pages:
 
 `about://usb-internals`: simulate connection and disconnection of virtual WebUSB devices
 
-U2F test pages:
+# Debugging U2F
+
+- Our Website: https://u2f-858.herokuapp.com/
+and others:
 - https://webauthn.bin.coffee/  
 - https://demo.yubico.com/webauthn-technical/registration
 - https://akisec.com/demo/
@@ -115,8 +130,15 @@ U2F test pages:
 
 ## Website Notes!
 
-We used webauthn! yay! Check out the website at https://u2f-858.herokuapp.com/
-To run it locally, go into the webauthn-website directory and follow the README in that folder.
+A website is setup to use webauthn at https://u2f-858.herokuapp.com/
+To run [`webauthn-website`](webauthn-website) locally, follow intructions in [`webauthn-website/README.md`](webauthn-website/README.md)
+
+## Setting up google-u2f-ref-code submodule
+To set up the submodule, run:
+```
+git submodule init
+git submodule update --init --recursive
+```
 
 ## References
 
@@ -124,4 +146,10 @@ To run it locally, go into the webauthn-website directory and follow the README 
 
 [2] Reference code for U2F specifications. Google, 2022. Accessed: Apr. 02, 2022. [Online]. Available: https://github.com/google/u2f-ref-code
 
-[3] TODO format this shit: https://github.com/tonijukica/webauthn.git
+[3] https://github.com/tonijukica/webauthn.git
+
+[4] https://fidoalliance.org/specs/fido-u2f-v1.2-ps-20170411/fido-u2f-raw-message-formats-v1.2-ps-20170411.html#registration-request-message---u2f_register
+
+[5] https://fidoalliance.org/specs/u2f-specs-master/fido-u2f-hid-protocol.html#:~:text=With%20a%20packet%20size%20of,%2D%205)%20%3D%207609%20bytes
+
+[6] https://fidoalliance.org/specs/fido-v2.0-id-20180227/fido-client-to-authenticator-protocol-v2.0-id-20180227.html
