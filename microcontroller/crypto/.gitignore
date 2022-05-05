@@ -1,0 +1,6 @@
+backup
+*.swp
+hardware
+*.o
+*.a
+.depend

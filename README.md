@@ -6,6 +6,7 @@ u2f dongle implementation for MIT's 6.858 - Spring 2022
 
 - [`microcontroller/`](microcontroller): teensy code that is uploaded
   - [`main/`](microcontroller/main): our implementation
+  - [`crypto/`](microcontroller/crypto): AES128 implmentation from [crypto](https://github.com/OperatorFoundation/Crypto/tree/master/src)
   - [`sha256/`](microcontroller/sha256): sha256 implementation from [crypto-algorithms](https://github.com/B-Con/crypto-algorithms).
   - [`uECC/`](microcontroller/uECC): ECDH and ECDSA implementation for 8-bit, 32-bit, and 64-bit processors. See [micro-ecc](https://github.com/kmackay/micro-ecc).
 - [`server/`](server): test webauthn capable server in python
