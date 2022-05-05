@@ -189,10 +189,27 @@ void append_signature(byte* signature,int*packet_length){
 }
 
 void check_handle(byte*buffer,byte *message, int size, int*out_size){
- byte* application = message+32;
+    byte* app_hash= message+32;
     
     byte handle_len = *(message + 32 + 32);
     byte *handle = message + 32 + 32 + 1;
+
+
+    byte *data = (byte *)malloc(64);
+
+    // encrypt data with key using xor
+    byte *app_prime = (byte *)malloc(32);
+
+    byte * app_prime_prime = (byte *)malloc(32);
+
+    encrypt(K_app, app_hash, app_prime, 1);
+
+    decrypt(K_wrap, handle, data, 0);
+
+    byte * temp = (byte *)malloc(32);
+
+    deinterleave(data, app_prime_prime, temp);
+
 
     DISPLAY_IF_DEBUG("check_handle: handle_len:");
     DISPLAY_IF_DEBUG(handle_len);
@@ -204,21 +221,10 @@ void check_handle(byte*buffer,byte *message, int size, int*out_size){
 
     // decode handle using handlekey
 
-    for (int i = 0; i < handle_len; i++)
-    {
-        handle[i] ^= handlekey[i % (sizeof(handlekey) - 1)];
-    }
-
-    byte *h_app = handle;
-
-    DISPLAY_IF_DEBUG("check_handle: h_app:");
-    debug_dump_hex(h_app, 32);
-    DISPLAY_IF_DEBUG("\n");
-
     // check if priv_k is a valid private key
     // by comparing the application parameter
 
-    if (memcmp(h_app, application, 32) != 0)
+    if (memcmp(app_prime, app_prime_prime, 32) != 0) 
     {
         DISPLAY_IF_DEBUG("check_handle: priv_k is not a valid private key");
         DISPLAY_IF_DEBUG("\n");
