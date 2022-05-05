@@ -4,6 +4,8 @@
 // encryption libs
 #include "src/sha256/sha256.h"
 #include "src/uECC/uECC.h"
+#include "src/crypto/src/Crypto.h"
+#include "src/crypto/src/AES.h"
 
 // debug state
 #undef DEBUG
@@ -31,6 +33,14 @@
 
 #include "button.h"
 
+#include "protocol.h"
+
+#include "message_processing.h"
+
+#include "communication.h"
+
+#include "test.h"
+
 void setup() {
 
 	Serial.begin(9600);
@@ -41,12 +51,6 @@ void setup() {
 	pinMode(BUTTON_PIN, INPUT);
 
 }
-
-#include "protocol.h"
-
-#include "message_processing.h"
-
-#include "communication.h"
 
 void loop() {
 

@@ -4,6 +4,16 @@ uint8_t public_k[68]; //64
 byte handle[64];
 byte sha256_hash[32];
 
+// used in protocol.h
+byte K_wrap[16] = {'Y', 'o', 'u', 'r',
+                   '_', 'M', 'o', 't',
+                   'h', 'e', 'r', '_',
+                   'K', 'e', 'y', '!'};
+byte K_app[16]  = {'6', '9', '4', '2',
+                     '0', 'f', 'u', 't', 
+                     'a', 'u', '2', 'f', 
+                     'u', 'w', 'u', '!'};
+
 // attestation key:  f3fccc0d00d8031954f90864d43c247f4bf5f0665c6b50cc17749a27d1cf7664
 const char attestation_key[] = "\xf3\xfc\xcc\x0d\x00\xd8\x03\x19\x54\xf9\x08\x64\xd4\x3c\x24\x7f\x4b\xf5\xf0\x66\x5c\x6b\x50\xcc\x17\x74\x9a\x27\xd1\xcf\x76\x64";
 

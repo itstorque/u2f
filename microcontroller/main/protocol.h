@@ -3,10 +3,6 @@
 // defined in communication.h
 void send_response_cont(byte *request, int packet_length);
 
-// TODO: move this to keys.h
-byte K_wrap[16] = {};
-byte K_app[16] = {};
-
 #include "protocol_helpers.h"
 
 void u2f_version(byte *buffer, int reqlength)

@@ -1,40 +1,102 @@
 #pragma mark - U2F PROTOCOL HELPERS
 
+
+AESSmall128 aes128;
+
+// encrypt a 32 or 64 byte array by chopping plaintext into 4 16byte arrays, encrypting each block and putting into ciphertext
+void encrypt(byte* key, byte*plaintext, byte*ciphertext, bool is32bytes = true)
+{
+    int numChunks = is32bytes ? 2 : 4; 
+
+    aes128.clear();
+    aes128.setKey(key, aes128.keySize());
+    crypto_feed_watchdog();
+
+    byte plaintext_chunks[numChunks][16];
+    byte ciphertext_chunks[numChunks][16];
+
+    for (int i = 0; i < numChunks; i++) {
+        
+        for (int j = 0; j < 16; j++) {
+            plaintext_chunks[i][j] = plaintext[i*16+j];
+        }
+        aes128.encryptBlock(ciphertext_chunks[i], plaintext_chunks[i]);
+
+        for (int j = 0; j < 16; j++) {
+            ciphertext[i*16+j] = ciphertext_chunks[i][j];
+        }
+        
+    }
+
+}
+
+// decrypt a 64 byte array by chopping ciphertext into 4 16byte arrays, decrypting each block and putting into plaintext
+void decrypt(byte* key,  byte*ciphertext, byte*plaintext, bool is32bytes = true)
+{
+    int numChunks = is32bytes ? 2 : 4; 
+
+    aes128.clear();
+    aes128.setKey(key, aes128.keySize());
+    crypto_feed_watchdog();
+
+    byte ciphertext_chunks[numChunks][16];
+    byte plaintext_chunks[numChunks][16];
+
+
+    for (int i = 0; i < numChunks; i++) {
+
+        for (int j = 0; j < 16; j++) {
+            ciphertext_chunks[i][j] = ciphertext[i*16+j];
+        }
+
+        aes128.decryptBlock(plaintext_chunks[i], ciphertext_chunks[i]);
+
+        for (int j = 0; j < 16; j++) {
+            plaintext[i*16+j] = plaintext_chunks[i][j];
+        }
+
+
+    }
+
+}
+
+// interleaves 2 32 byte arrays and puts output in a 64 byte array
+void interleave(byte* a, byte*b, byte*interleaved){
+    for (int i = 0; i < 32; i++) {
+        interleaved[2*i] = a[i];
+        interleaved[2*i+1] = b[i];
+    }
+}
+
+void deinterleave(byte* interleaved, byte*a, byte*b){
+    for (int i = 0; i < 32; i++) {
+        a[i] = interleaved[2*i];
+        b[i] = interleaved[2*i+1];
+    }
+}
+
 void store(byte *app_hash, int hash_len, struct EncryptionKey k_priv, struct Handle *h)
 {
     byte *data;
-    int data_len;
+    int data_len = 64;
+
     // copy the app_hash and k_priv into data
     data_len = hash_len + k_priv.size;
     data = (byte *)malloc(data_len);
-    // DISPLAY_IF_DEBUG("store: hash_len");
-    // DISPLAY_IF_DEBUG(hash_len);
-    // DISPLAY_IF_DEBUG("\n");
 
-    // DISPLAY_IF_DEBUG("store: k_priv.size");
-    // DISPLAY_IF_DEBUG(k_priv.size);
-    // DISPLAY_IF_DEBUG("\n");
+    byte *app_prime;
+    app_prime = (byte *)malloc(32);
 
-    memcpy(data, app_hash, hash_len);
-    memcpy(data + hash_len, k_priv.key, k_priv.size);
+    // is32bytes is true!
+    encrypt(K_app, app_hash, app_prime, 1);
 
-    // encrypt data with key using xor
-    byte *encrypted_data;
-    int encrypted_data_len;
-    encrypted_data_len = data_len;
-    encrypted_data = (byte *)malloc(encrypted_data_len);
+    interleave(app_prime, k_priv.key, data);
 
+    byte* encrypted_data;
+    encrypted_data = (byte *)malloc(64);
 
-    //aes128.setKey(K_app, aes128.keySize());
-    // encpyt data in blocks of 
-
-
-    // encrypt(data, encrypted_data);
-
-    for (int i = 0; i < data_len; i++)
-    {
-        encrypted_data[i] = data[i] ^ handlekey[i % (sizeof(handlekey) - 1)];
-    }
+    // is 32bytes is false! so 64 bytes
+    encrypt(K_wrap, data, encrypted_data, 0);   
 
     // write into handle
     h->size = data_len;
@@ -43,31 +105,27 @@ void store(byte *app_hash, int hash_len, struct EncryptionKey k_priv, struct Han
 
 int retrieve(byte *app_hash, byte *buffer, struct Handle h, struct EncryptionKey *k_priv)
 {
-    // TODO: improve using encryption
-    // get k_priv from handle
+
     byte *data;
-    // int data_len;
-    // data_len = h.size;
-    data = (byte *)malloc(h.size);
+    data = (byte *)malloc(64);
 
-    memcpy(data, h.data, h.size);
+    // encrypt data with key using xor
+    byte *app_prime;
+    app_prime = (byte *)malloc(32);
 
-    // decrypt data with key using xor
-    byte *decrypted_data;
-    // int decrypted_data_len;
-    // decrypted_data_len = data_len;
-    decrypted_data = (byte *)malloc(h.size);
+    byte * app_prime_prime;
+    app_prime_prime = (byte *)malloc(32);
 
-    for (int i = 0; i < h.size; i++)
+    // is32bytes is true!
+    encrypt(K_app, app_hash, app_prime, 1);
+
+    decrypt(K_wrap, h.data, data, 0);
+
+    deinterleave(data, app_prime_prime, k_priv->key);
+
+    if (memcmp(app_prime, app_prime_prime, 32) != 0) 
     {
-        decrypted_data[i] = data[i] ^ handlekey[i % (sizeof(handlekey) - 1)];
-    }
-
-    memcpy(k_priv->key, decrypted_data + 32, k_priv->size);
-
-    if (memcmp(decrypted_data, app_hash, 32) != 0)
-    {
-        DISPLAY_IF_DEBUG("check_handle: priv_k is not a valid private key");
+        DISPLAY_IF_DEBUG("retrieve: priv_k is not a valid private key");
         DISPLAY_IF_DEBUG("\n");
         // reply with  Response Message: Error: Invalid Handle
         byte *end = cont_response;
@@ -76,8 +134,7 @@ int retrieve(byte *app_hash, byte *buffer, struct Handle h, struct EncryptionKey
 
         return 0;
     }
-    DISPLAY_IF_DEBUG("check_handle: priv_k is a valid private key");
-    DISPLAY_IF_DEBUG("\n");
+    DISPLAY_IF_DEBUG("retrieve: priv_k is a valid private key");
 
     return 1;
 }
