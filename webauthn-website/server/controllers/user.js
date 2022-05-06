@@ -111,6 +111,11 @@ router.post('/response', async (req, res) => {
 	} else if (webAuthnResp.response.authenticatorData !== undefined) {
 		/* This is get assertion */
 		result = await verifyAuthenticatorAssertionResponse(webAuthnResp, user.authenticators);
+		// update user counter in db
+		if(result.authrInfo ){
+			user.counter = result.authrInfo.counter;
+			user.save();
+		}
 	} else {
 		return res.json({
 			'status': 'failed',
@@ -119,10 +124,6 @@ router.post('/response', async (req, res) => {
 	}
 	if (result.verified) {
 		req.session.loggedIn = true;
-		// update user counter in db
-		user.counter = result.authrInfo.counter;
-		console.log("Counter: "+result.authrInfo.counter);
-		user.save();
 		return res.json({ 'status': 'ok' });
 	} else {
 		return res.json({

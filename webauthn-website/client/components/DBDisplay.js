@@ -41,8 +41,8 @@ function DBDisplay() {
 							<Table.Cell>{user.id}</Table.Cell>
 							<Table.Cell>{user.name}</Table.Cell>
 							<Table.Cell>{user.email}</Table.Cell>
-							<Table.Cell>{user.counter>0? user.counter: 'reregister to see counter'}</Table.Cell>
-							<Table.Cell>{user.authenticators[0].publicKey}</Table.Cell>
+							<Table.Cell>{user.counter? user.counter: -1}</Table.Cell>
+							<Table.Cell>{user.authenticators[0]? user.authenticators[0].publicKey: 'none'}</Table.Cell>
 						</Table.Row>
 					))}
 				</Table.Body>
