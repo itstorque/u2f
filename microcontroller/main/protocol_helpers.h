@@ -153,7 +153,7 @@ void append_signature(byte* signature,int*packet_length){
     cont_response[(*packet_length)++] = 0x02; // length of r
 
 	if (signature[0]>0x7f) {
-   	cont_response[(*packet_length)++] = 33;  //33 byte
+    	cont_response[(*packet_length)++] = 33;  //33 byte
 		cont_response[(*packet_length)++] = 0;
 		(*total_len)++; //update total length
         DISPLAY_IF_DEBUG("append_sign: signature[0]>0x7f");

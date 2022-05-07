@@ -100,7 +100,7 @@ void register_origin(byte*buffer,byte *message, int size)
 
     packet_length += sizeof(attestation_DER_cert)-1;
 
-    append_signature(signature,&packet_length);
+    append_signature(signature, &packet_length);
 
 
     DISPLAY_IF_DEBUG("handle:");
