@@ -11,9 +11,10 @@ U2F dongle implementation created for and tested on a teensy 3.2 with the additi
   - [`crypto/`](microcontroller/crypto): AES128 implmentation from [crypto](https://github.com/OperatorFoundation/Crypto/tree/master/src)
   - [`sha256/`](microcontroller/sha256): sha256 implementation from [crypto-algorithms](https://github.com/B-Con/crypto-algorithms).
   - [`uECC/`](microcontroller/uECC): ECDH and ECDSA implementation for 8-bit, 32-bit, and 64-bit processors. See [micro-ecc](https://github.com/kmackay/micro-ecc).
-- [`server/`](server): test webauthn capable server in python
-- [`chrome/`](chrome): js that establishes a connection between the dongle and chrome via usb protocol
-- [`google-u2f-ref-code`](google-u2f-ref-code): git submodule of google's u2f reference code
+- [`webauthn-website/`](webauthn-website): test webauthn capable server in python
+- [`helpers/`](helpers): helper script for cert gen and usage page and usage id setup
+- [`doc/`](doc): contains a write-up explaining the implementation and any photos used
+- [`google-u2f-ref-code/`](google-u2f-ref-code): git submodule of google's u2f reference code
 
 ### Microcontroller Directory
 
@@ -90,7 +91,7 @@ to setup the teensyduino core lib USB headers. The section `USB_RAWHID` in
  `Teensyduino.app/Contents/Java/hardware/teensy/avr/cores/teensy3/usb_desc.h`
  should redefine the following:
  ```C
-   #define RAWHID_USAGE_PAGE  0xf1d0
+  #define RAWHID_USAGE_PAGE  0xf1d0
   #define RAWHID_USAGE  0x01
   ```
 You can reference
@@ -108,8 +109,9 @@ Chrome pages:
 
 # Debugging U2F
 
-- Our Website: https://u2f-858.herokuapp.com/
-and others:
+The test webauthn website in this repository lives at https://u2f-858.herokuapp.com/
+
+Other useful testing websites here:
 - https://webauthn.bin.coffee/  
 - https://demo.yubico.com/webauthn-technical/registration
 - https://akisec.com/demo/
