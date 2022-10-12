@@ -2,7 +2,7 @@
 
 U2F dongle implementation created for and tested on a teensy 3.2 with the addition of a button.
 
-![doc/hardware_key.png](doc/hardware_key.jpeg)
+![docs/hardware_key.png](docs/hardware_key.jpeg)
 
 ## Project Structure
 
