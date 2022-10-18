@@ -13,7 +13,7 @@ U2F dongle implementation created for and tested on a teensy 3.2 with the additi
   - [`uECC/`](microcontroller/uECC): ECDH and ECDSA implementation for 8-bit, 32-bit, and 64-bit processors. See [micro-ecc](https://github.com/kmackay/micro-ecc).
 - [`webauthn-website/`](webauthn-website): test webauthn capable server in python
 - [`helpers/`](helpers): helper script for cert gen and usage page and usage id setup
-- [`doc/`](doc): contains a write-up explaining the implementation and any photos used
+- [`docs/`](docs): contains a write-up explaining the implementation and any photos used
 - [`google-u2f-ref-code/`](google-u2f-ref-code): git submodule of google's u2f reference code
 
 ### Microcontroller Directory
@@ -69,7 +69,7 @@ Test functions for encrypt and decrypt
 
 ## Implementation
 
-![doc/security_key_flow_diagram.png](doc/security_key_flow_diagram.png)
+![docs/security_key_flow_diagram.png](docs/security_key_flow_diagram.png)
 
 For communication protocol, look at [4], [5], [6].
 
